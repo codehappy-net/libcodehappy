@@ -1,0 +1,162 @@
+
+            Indeo Video 3.2 (IV32) stream format for AVI and QT
+            ---------------------------------------------------
+
+                  Dr. Tim Ferguson and Mike Melanson, 2001.
+
+
+         *****************************************************
+         * WARNING - work in progress.  This is not complete *
+         *****************************************************
+
+The Indeo Video 3.2 (IV32) video format is relatively old and has since been
+superseded by Indeo Video 4 and 5.  The codec was is use around the time
+of the Cinepak codec, and so its performance has historically been compared
+with Cinepak.
+
+Apparently `a proprietary blend of color sampling, vector quantisaion and
+run-length encoding'.
+
+A typical frame of an IV32 video sequence is made up of the following
+parts:
+
+     +-----------------------+
+     | Frame Header          |
+     +-----------------------+
+     | Frame Information     |
+     +-----------------------+
+     | Unknown Common Data   |
+     +-----------------------+
+     | Component 1 Data      |
+     +-----------------------+
+     | Component 2 Data      |
+     +-----------------------+
+     | Component 3 Data      |
+     +-----------------------+
+
+Each of these parts are described in more detail.  All multi-byte values are
+in least significant byte (LSB) ordering (ie: Intel order).
+
+
+ ---------------
+  Frame Header
+ ---------------
+
+Each frame of the IV32 video sequence starts with a header, defined
+as follows:
+
+          long words             Field Name                    Type
+         +---------------+
+ 0 - 3   |               |       Frame number                  Unsigned
+         +---------------+
+ 4 - 7   |               |       Unknown value  (FIXME)        Unsigned
+         +---------------+
+ 8 - 11  |               |       Checksum value                Unsigned
+         +---------------+
+ 12 - 15 |               |       Frames data length            Unsigned
+         +---------------+
+
+Frame number - The number of this frame: previous frame + 1
+Unknown value - Always = 0?
+Checksum value - Selected such that when the four long values of the frame
+   header are XORed together, it creates the fourcc `FRMH'.
+Frames data length - The number of bytes which follow this frame header
+   that are needed to decode the frame.  Note that for key frames, this
+   value does not generally match that of the AVI chunk size.  This is due
+   to a version string appended to the end of the chunk.  For example,
+   `Ver 3.24.15.03', with carriage returns at the start and end (16
+   additional bytes).
+
+
+ --------------------
+  Frame Information
+ --------------------
+
+           words                 Field Name                    Type
+         +---------------+
+ 0 - 1   |               |       Unknown value 1 (FIXME)       Unsigned
+         +---------------+
+ 2 - 3   |               |       Frame flags                   Unsigned
+         +---------------+
+ 4 - 5   |               |       Unknown value 2 (FIXME)       Unsigned
+         +-             -+
+ 6 - 7   |               |
+         +---------------+
+ 8 - 9   |               |       Unknown value 3 (FIXME)       Unsigned
+         +-             -+
+ 10 - 11 |               |
+         +---------------+
+ 12 - 13 |               |       Frame height                  Unsigned
+         +---------------+
+ 14 - 15 |               |       Frame width                  Unsigned
+         +---------------+
+ 16 - 17 |               |       Component offset 1            Unsigned
+         +-             -+
+ 17 - 18 |               |
+         +---------------+
+ 18 - 19 |               |       Component offset 2            Unsigned
+         +-             -+
+ 19 - 20 |               |
+         +---------------+
+ 20 - 21 |               |       Component offset 3            Unsigned
+         +-             -+
+ 21 - 22 |               |
+         +---------------+
+ 22 - 23 |               |       Unknown value 4 (FIXME)       Unsigned
+         +-             -+
+ 23 - 24 |               |
+         +---------------+
+
+Unknown value 1 - Always equals 32.  May be the size of the frame info?
+Frame flags - Appears to be flags for the frame (FIXME)
+Unknown value 2 - used to decode components? (FIXME)
+Unknown value 3 - used to decode components? (FIXME)
+Frame height - The pixel height of the frame.
+Frame width - The pixel width of the frame.
+Component offset 1 - Byte offset from end of frame header to component 1 data.
+Component offset 2 - Byte offset from end of frame header to component 2 data.
+Component offset 3 - Byte offset from end of frame header to component 3 data.
+Unknown value 4 - Always equals 0? (FIXME)
+
+ ----------------------
+  Unknown Common Data
+ ----------------------
+
+Data yet to be deciphered - used to decode each of the components.
+Typically there is 16 bytes of it and typically the following bytes:
+
+    02 14 26 38 4a 5c 6e 7f 82 94 a6 b8 ca dc ee ff
+
+(increment in steps of 17 or 18 starting at 2)
+
+ -----------------
+  Component Data
+ -----------------
+
+There are three components - probably Y, U and V or some equivalent.
+
+The first component is full resolution, while the second and third
+components are subsampled to 1/8th there original resolution.
+This format is known as YUV410, or Intel's Indeo raw planar YVU9
+
+At the start of each component is a long word which specifies the number
+of delta table entries defined at the start of the component data.
+Each delta table entry consists of two bytes: y_delta and x_delta.
+
+Yet to completely decipher how components are decoded.  Looks to be
+some sort of procedural method where bits indicate what type of
+coding/vector comes next - complex.
+
+---------------------------------------------------------------------
+This document was written by Dr. Tim Ferguson with information from
+Mike Melanson, 2001.
+
+For more details, on this and other codecs, including source code, visit:
+    http://www.csse.monash.edu.au/~timf/videocodec.html 
+and
+    http://www.pcisys.net/~melanson/codecs/
+
+To contact me, email: timf@csse.monash.edu.au
+      or Mike, email: melanson@pcisys.net
+---------------------------------------------------------------------
+

@@ -1,0 +1,82 @@
+
+                 Creative YUV (CYUV) stream format for AVI
+                 -----------------------------------------
+
+                        Dr. Tim Ferguson, 2001.
+
+Originally designed for the Creative Labs Video Blaster, the Creative
+CYUV video codec stores frames in a DPCM coded YUV411 format.  Encoding
+and decoding of frames was originally performed by the vblaster.drv
+Windows driver.  This codec looks to have been designed for simplicity and
+speed.
+
+The CYUV codec is a very simple predictive coder.  A video frame is coded
+in the YUV colour space, with the chrominance components subsampled by
+four in the horizontal direction (YUV411).  That is, for four horizontal
+Y pixels there are only one U and V pixels:
+   +----+----+----+----+  +---+  +---+
+   | y0 | y1 | y2 | y3 |  | u |  | v |
+   +----+----+----+----+  +---+  +---+
+Note this is different to the YUV420 formats used by the ITU standards
+(MPEG, etc).
+
+Predictive coding is reset at the start of each scan line, with the very
+first Y, U and V component pixels being coded using the upper four bits
+of their absolute values.  These provide the initial predictions for the
+remainder of the scanline.  Each subsequent Y, U and V pixels in the
+scanline are coded using the difference between the last decoded pixel
+and the current pixel of the same component (DPCM).  This difference
+is known as a prediction error (ie: the previous pixel is used as a
+prediction for the current pixel).
+
+The prediction error values are coded using three 16 entry tables of
+signed values found at the start of the frame.  The first of the three
+tables appears to be unused (see Note 1).  The second table is used to
+code the prediction errors for the Y component and the third table is used
+to code the prediction errors for both the U and V components.  These
+tables allow for either linear or non-linear quantisation of the prediction
+errors.
+
+Since there are 16 entries per table, this requires four bits to index.
+Thus four bits per component are used, which are packed into bytes as
+follows:
+
+  +----+----+   +----+----+   +----+----+    +--+--+  +--+--+  +--+--+
+  | U1 | Y1 |   | V1 | Y2 |   | Y4 | Y3 |    |U2|Y5|  |V2|Y6|  |Y8|Y7| UY VY ...
+  +----+----+   +----+----+   +----+----+    +--+--+  +--+--+  +--+--+ 
+  7    4    0   7    4    0   7    4    0
+
+Therefore, four YUV411 pixels are coded into three bytes providing six bits
+per pixel.  If the above diagram were the start of a scanline, the Y1, U1
+and V1 values would be coded using the upper four bits of their absolute
+values (initial predictions).  The Y2, Y3, Y4,... values would then be
+coded as prediction errors using table two, and the U2, U3, ... and
+V2, V3, ... values would be coded as prediction errors using table three.
+
+The overall format of a CYUV coded frame is as follows:
+
+     +-----------------------+
+     | Prediction Table 1    |  16 bytes
+     +-----------------------+
+     | Prediction Table 2    |  16 bytes
+     +-----------------------+
+     | Prediction Table 3    |  16 bytes
+     +-----------------------+
+     |    .      .      .    |  (width * height * 6)/8 bytes
+       DPCM coded YUV pixels      
+     |    .      .      .    |
+     +-----------------------+
+
+Note 1: This format was tested using the xanim (http://xanim.va.pubnix.com/)
+   video player.  Therefore, the format may not be strictly compatible with
+   the old vblaster.drv.  This has not been tested.
+
+---------------------------------------------------------------------
+This document was written by Dr. Tim Ferguson, 2001.
+
+For more details, on this and other codecs, including source code, visit:
+    http://www.csse.monash.edu.au/~timf/videocodec.html 
+
+To contact me, email: timf@csse.monash.edu.au
+---------------------------------------------------------------------
+
