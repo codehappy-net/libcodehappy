@@ -1,0 +1,7 @@
+*.o
+*.a
+*.bc
+s*
+backup
+backup/*
+
