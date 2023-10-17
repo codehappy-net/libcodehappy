@@ -1,0 +1,7 @@
+// IMPLEMENTATION BUILD HEADER
+#ifndef _UINT128_T_BUILD
+#define _UINT128_T_BUILD
+#define _UINT128_T_EXPORT
+#define _UINT128_T_IMPORT
+#include "uint128_t.include"
+#endif
