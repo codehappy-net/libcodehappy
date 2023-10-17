@@ -1,10 +1,8 @@
 # clutter that might appear in the root directory that shouldn't be part of the repository
 *.backup
 *.bmp
-*.c
 *.compress
 *.conf
-*.cpp
 *.csv
 *.dat
 *.data
