@@ -15,6 +15,7 @@ void play_jukebox(const std::string& folder, const std::string& soundfont) {
 	GrabBag<std::string> paths;
 	DIR* di = opendir(folder.c_str());
 	dirent* entry;
+	bool first = true;
 
 	while (entry = readdir(di)) {
 		std::string path;
@@ -30,8 +31,11 @@ void play_jukebox(const std::string& folder, const std::string& soundfont) {
 	
 	while (!paths.Empty()) {
 		std::string path;
+		// The soundfont could be very large; we don't want to re-load it each time.
+		const char* sfname = (first ? soundfont.c_str() : nullptr);
 		path = paths.Select();
-		if (play_midi(path.c_str(), soundfont.c_str()) == MIDI_OK) {
+		if (play_midi(path.c_str(), sfname) == MIDI_OK) {
+			first = false;
 			std::cout << "Playing " << path << "...\n";
 			while (midi_playing())
 				;

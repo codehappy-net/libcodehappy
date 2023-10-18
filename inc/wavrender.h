@@ -492,11 +492,13 @@ extern int play_midi(const char* midi_filename, const char* soundfont_filename);
 extern int play_midi(const char* midi_filename, tsf* soundfont);
 extern bool midi_playing();
 
+/* midi_free() frees the last-used soundfont or MIDI stream, if it's still around. */
+extern void midi_free();
+
 #define MIDI_OK		0
 #define MIDI_SOUNDFONT_ERROR	(-1)
 #define MIDI_ALREADY_PLAYING	(-2)
 #define MIDI_MIDI_ERROR	(-3)
-#define MIDI_SDL_ERROR		(-4)
 
 #endif  // CODEHAPPY_SDL
 

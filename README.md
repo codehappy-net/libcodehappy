@@ -59,13 +59,13 @@ Authors of other bits of code and the associated licensing include:
 
 The make* scripts in the root directory build the library and example apps, .sh for Linux, .bat for Windows. You may need to change the values of the environment variables SDL_LINKER_FLAGS, SDL_COMPILER_FLAGS, CUDA_INC_DIRS, or CUDA_LIBRARIES. The name of the script tells you the kind of build:
 
-- *maken*: Native build (for terminal/console apps), release
-- *makend*: Native build (for terminal/console apps), debug
-- *makens*: Native + SDL build (for windowed apps or apps using SDL audio), release
-- *makensd*: Native + SDL build (for windowed apps or apps using SDL audio), debug
-- *makecuda*: Native build (for terminal/console apps) with CUDA support, release
-- *makecudad*: Native build (for terminal/console apps) with CUDA support, debug
-- *makecudas*: Native + SDL build (for windowed apps or apps using SDL audio) with CUDA support, release
-- *makecudasd*: Native + SDL build (for windowed apps or apps using SDL audio) with CUDA support, debug
-- *makewasm*: WebAssembly + Emscripten build (for in-browser apps).
+- *maken*: Native build (for terminal/console apps), release, output is libcodehappy.a
+- *makend*: Native build (for terminal/console apps), debug, output is libcodehappyd.a
+- *makens*: Native + SDL build (for windowed apps or apps using SDL audio), release, output is libcodehappys.a
+- *makensd*: Native + SDL build (for windowed apps or apps using SDL audio), debug, output is libcodehappysd.a
+- *makecuda*: Native build (for terminal/console apps) with CUDA support, release, output is libcodehappycuda.a
+- *makecudad*: Native build (for terminal/console apps) with CUDA support, debug, output is libcodehappycudadebug.a
+- *makecudas*: Native + SDL build (for windowed apps or apps using SDL audio) with CUDA support, release, output is libcodehappycudas.a
+- *makecudasd*: Native + SDL build (for windowed apps or apps using SDL audio) with CUDA support, debug, output is libcodehappycudasd.a
+- *makewasm*: WebAssembly + Emscripten build (for in-browser apps), output is libcodehappy.bc.
 

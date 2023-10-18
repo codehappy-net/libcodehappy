@@ -2109,20 +2109,42 @@ int midi_programs_used(const char* midi_path, std::unordered_set<int>& programs)
 
 static int __midi_channel = -1;
 static WavBuild* __wb_midi_last = nullptr;
+static tsf* __sf_last = nullptr;
 bool midi_playing() {
 	if (__midi_channel < 0)
 		return false;
 	return Mix_Playing(__midi_channel);
 }
 
+void midi_free() {
+	if (__sf_last != nullptr) {
+		tsf_close(__sf_last);
+	}
+	if (__wb_midi_last != nullptr) {
+		delete __wb_midi_last;
+	}
+	__sf_last = nullptr;
+	__wb_midi_last = nullptr;
+}
+
 int play_midi(const char* midi_filename, tsf* soundfont) {
 	WavRender wr;
-	WavBuild* wb = wr.build_midi(nullptr, midi_filename, soundfont);
 
 	if (__wb_midi_last != nullptr)
 		delete __wb_midi_last;
+	if (is_null(soundfont) && is_null(__sf_last))
+		return MIDI_SOUNDFONT_ERROR;
+	if (is_null(soundfont))
+		soundfont = __sf_last;
+
+	WavBuild* wb = wr.build_midi(nullptr, midi_filename, soundfont);
+	NOT_NULL_OR_RETURN(wb, MIDI_MIDI_ERROR);
+
 	__midi_channel = wb->play_wav();
 	__wb_midi_last = wb;
+	if (!is_null(__sf_last) && __sf_last != soundfont)
+		tsf_close(__sf_last);
+	__sf_last = soundfont;
 
 	return MIDI_OK;
 }
@@ -2138,7 +2160,6 @@ int play_midi(const char* midi_filename, const char* soundfont_filename) {
 		NOT_NULL_OR_RETURN(sf, MIDI_SOUNDFONT_ERROR);
 	}
 	ret = play_midi(midi_filename, sf);
-	tsf_close(sf);
 	return ret;
 }
 
