@@ -670,9 +670,9 @@ Mix_Chunk* WavFile::sdl_mixchunk(void) {
 	return mxc;
 }
 
-void WavFile::play_wav(int loops) {
+int WavFile::play_wav(int loops) {
 	Mix_Chunk* mxc = sdl_mixchunk();
-	Mix_PlayChannel(-1, mxc, loops);
+	return Mix_PlayChannel(-1, mxc, loops);
 }
 #endif  // CODEHAPPY_SDL
 
@@ -1186,9 +1186,9 @@ Mix_Chunk* WavBuild::sdl_mixchunk(void) {
 	return mxc;
 }
 
-void WavBuild::play_wav(int loops) {
+int WavBuild::play_wav(int loops) {
 	Mix_Chunk* mxc = sdl_mixchunk();
-	Mix_PlayChannel(-1, mxc, loops);
+	return Mix_PlayChannel(-1, mxc, loops);
 }
 
 #endif
@@ -2104,5 +2104,44 @@ int midi_programs_used(const char* midi_path, std::unordered_set<int>& programs)
 	tml_free(midi);
 	return ret;
 }
+
+#ifdef CODEHAPPY_SDL
+
+static int __midi_channel = -1;
+static WavBuild* __wb_midi_last = nullptr;
+bool midi_playing() {
+	if (__midi_channel < 0)
+		return false;
+	return Mix_Playing(__midi_channel);
+}
+
+int play_midi(const char* midi_filename, tsf* soundfont) {
+	WavRender wr;
+	WavBuild* wb = wr.build_midi(nullptr, midi_filename, soundfont);
+
+	if (__wb_midi_last != nullptr)
+		delete __wb_midi_last;
+	__midi_channel = wb->play_wav();
+	__wb_midi_last = wb;
+
+	return MIDI_OK;
+}
+
+int play_midi(const char* midi_filename, const char* soundfont_filename) {
+	int ret;
+	if (midi_playing())
+		return MIDI_ALREADY_PLAYING;
+
+	tsf* sf = nullptr;
+	if (!is_null(soundfont_filename)) {
+		sf = tsf_load_filename(soundfont_filename);
+		NOT_NULL_OR_RETURN(sf, MIDI_SOUNDFONT_ERROR);
+	}
+	ret = play_midi(midi_filename, sf);
+	tsf_close(sf);
+	return ret;
+}
+
+#endif  // CODEHAPPY_SDL
 
 /* end wavrender.cpp */

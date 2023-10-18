@@ -7,10 +7,10 @@ the software released in my GitHub depends on this library.
 ### Good things about it:
 
 - You can build Windows, Linux, or WASM apps that run in-browser from the same source code base. Supports Win64 native, Linux native, or WebAssembly apps, terminal or windowed, in C++11, with minimal boilerplate. Good for tools, games, etc. Tested in Windows 7/8/10/11 and Ubuntu 20.04.
-- Lots of functionality, convenience, and syntactic sugar features provided. Really. A lot. A true tinkerer's toybox: 2-D drawing, GUI controls, waveform synthesis, various non-linear optimization libraries including genetic optimization and ANNs, large language model inference (GPU acceleration available with the NVIDIA CUDA developer toolkit), etc.
+- Lots of functionality, convenience, and syntactic sugar features provided. Really. A lot. A true tinkerer's toybox: 2-D drawing, GUI controls, waveform synthesis, various non-linear optimization libraries including genetic optimization and ANNs, large language model inference with GPU acceleration, etc.
 - Performance for most features somewhere between acceptable and world-beating. Any modern compiler with link-time optimizations does good things with the code.
 - Build process is simple.
-- Native apps have no external dependencies except pthread, GUI native apps need only SDL additionally, apps using the audio features need  SDL_mixer, WASM apps use Emscripten and its built-in SDL implementation. SDL binaries included for Win64, for Linux you'll need to install via apt-get.
+- Native apps have no external dependencies except pthread, GUI native apps need only SDL additionally, apps using the audio features need  SDL_mixer, WASM apps use Emscripten and its built-in SDL implementation. SDL binaries included for Win64, for Linux you'll need to install via apt-get. GPU accelerated apps need NVIDIA's CUDA developer toolkit.
 - Mostly easy to read, APIs are pretty simple and flexible, and it feels good to write code in, at least for me.
 
 ### Bad things about it:
@@ -54,4 +54,18 @@ Authors of other bits of code and the associated licensing include:
 - Joseph Adams, diff patch library (MIT)
 - Ahmed Samy, extended CPUID functions (MIT)
 - Public domain contributions by Donald E. Knuth, Henry S. Warren Jr., Timothy B. Terriberry, Rusty Russell, Michelangelo Jones, Raymond Gardner, David Ahl, Bob Stout, Ross Cottrell, David Harmon, Maynard Hogg, Jeffrey Foy, Thad Smith III, S. E. Margison, Bob Jarvis, Gilles Kohl, Jerry Coffin, Ed Bernal, Alexander Peslyak, Steve Reid, Henry Spencer, Paul Bartrum (all CC0)
+
+### Build process:
+
+The make* scripts in the root directory build the library and example apps, .sh for Linux, .bat for Windows. You may need to change the values of the environment variables SDL_LINKER_FLAGS, SDL_COMPILER_FLAGS, CUDA_INC_DIRS, or CUDA_LIBRARIES. The name of the script tells you the kind of build:
+
+- *maken*: Native build (for terminal/console apps), release
+- *makend*: Native build (for terminal/console apps), debug
+- *makens*: Native + SDL build (for windowed apps or apps using SDL audio), release
+- *makensd*: Native + SDL build (for windowed apps or apps using SDL audio), debug
+- *makecuda*: Native build (for terminal/console apps) with CUDA support, release
+- *makecudad*: Native build (for terminal/console apps) with CUDA support, debug
+- *makecudas*: Native + SDL build (for windowed apps or apps using SDL audio) with CUDA support, release
+- *makecudasd*: Native + SDL build (for windowed apps or apps using SDL audio) with CUDA support, debug
+- *makewasm*: WebAssembly + Emscripten build (for in-browser apps).
 

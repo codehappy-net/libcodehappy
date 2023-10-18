@@ -121,13 +121,21 @@ void Console::render(SBitmap* bmp) {
 	}
 }
 
-Display::Display(u32 width, u32 height, MainLoopCallback loop, void* user_data) {
+static bool __sdlinit = false;
+void codehappy_init_audiovisuals() {
+	if (__sdlinit)
+		return;
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_JOYSTICK /* SDL_INIT_VIDEO */);
 	SDL_EnableUNICODE(1);
 	if (Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 4096) == 0) {
 		//codehappy_cerr << "SDL mixer open error\n";
 	}
 	Mix_Init(MIX_INIT_FLAC | MIX_INIT_MOD | MIX_INIT_MP3 | MIX_INIT_OGG);
+	__sdlinit = true;
+}
+
+Display::Display(u32 width, u32 height, MainLoopCallback loop, void* user_data) {
+	codehappy_init_audiovisuals();
 	surface = SDL_SetVideoMode(width, height, 32, SDL_SWSURFACE);
 	ship_assert(!is_null(surface));
 	i_bitmap = new SBitmap(width, height, (u8*)surface->pixels);

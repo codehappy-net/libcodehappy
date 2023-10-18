@@ -23,6 +23,7 @@
 *.py
 *.rfi
 *.s
+*.sf2
 *.py
 *.wasm
 *.xlm

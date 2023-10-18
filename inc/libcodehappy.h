@@ -658,6 +658,9 @@ extern void codehappy_window_title(const char* new_title);
 
 // TODO: Can't set the window's icon with SDL unless I adopt v2.0.
 
+/* Initialize SDL without creating a Display object (good for SDL terminal applications -- using audio, e.g.) */
+extern void codehappy_init_audiovisuals();
+
 /*** WASM/Emscripten specific stuff below. ***/
 
 /*** Functions that allow HTTP requests or persistent storage. ***/

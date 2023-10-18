@@ -31,18 +31,15 @@ g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc -DCODEHAPPY_NATIVE examples/test
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc -DCODEHAPPY_NATIVE examples/testrng.cpp -o testrng.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc -DCODEHAPPY_NATIVE examples/sql.cpp -o sql.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc -DCODEHAPPY_NATIVE examples/testsat.cpp -o testsat.o
-g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/makefr.cpp -o makefr.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/sf2info.cpp -o sf2info.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/imgn.cpp -o imgn.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/midipart.cpp -o midipart.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/randbmp.cpp -o randbmp.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/polyn.cpp -o polyn.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/optn.cpp -o optn.o
-g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/atten.cpp -o atten.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/flip.cpp -o flip.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/latent.cpp -o latent.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/dataset.cpp -o dataset.o
-g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/gpt.cpp -o gpt.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/prompt.cpp -o prompt.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/laion.cpp -o laion.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/screencapsite.cpp -o screencapsite.o
@@ -68,12 +65,9 @@ g++ -O3 -flto -fuse-linker-plugin -m64 midipart.o bin/libcodehappy.a -lpthread -
 g++ -O3 -flto -fuse-linker-plugin -m64 randbmp.o bin/libcodehappy.a -lpthread -o randbmp
 g++ -O3 -flto -fuse-linker-plugin -m64 polyn.o bin/libcodehappy.a -lpthread -o polyn
 g++ -O3 -flto -fuse-linker-plugin -m64 optn.o bin/libcodehappy.a -lpthread -o optn
-g++ -O3 -flto -fuse-linker-plugin -m64 atten.o bin/libcodehappy.a -lpthread -o atten
 g++ -O3 -flto -fuse-linker-plugin -m64 flip.o bin/libcodehappy.a -lpthread -o flip
 g++ -O3 -flto -fuse-linker-plugin -m64 latent.o bin/libcodehappy.a -lpthread -o latent
-g++ -O3 -flto -fuse-linker-plugin -m64 makefr.o bin/libcodehappy.a -lpthread -o makefr
 g++ -O3 -flto -fuse-linker-plugin -m64 dataset.o bin/libcodehappy.a -lpthread -o dataset
-g++ -O3 -flto -fuse-linker-plugin -m64 gpt.o bin/libcodehappy.a -lpthread -o gpt
 g++ -O3 -flto -fuse-linker-plugin -m64 prompt.o bin/libcodehappy.a -o prompt
 g++ -O3 -flto -fuse-linker-plugin -m64 laion.o bin/libcodehappy.a -o laion
 g++ -O3 -flto -fuse-linker-plugin -m64 screencapsite.o bin/libcodehappy.a -o screencapsite

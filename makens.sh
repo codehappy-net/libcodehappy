@@ -28,28 +28,17 @@ echo "*** Build some demo apps"
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc -DCODEHAPPY_NATIVE_SDL $SDL_COMPILE_FLAGS examples/counter.cpp -o counter.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/colrname.cpp $SDL_COMPILE_FLAGS -o colrname.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/midi.cpp $SDL_COMPILE_FLAGS -o midi.o
-g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -DJUKEBOX -c examples/midi.cpp $SDL_COMPILE_FLAGS -o jukebox.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/toy.cpp $SDL_COMPILE_FLAGS -o toy.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/mp3.cpp $SDL_COMPILE_FLAGS -o mp3.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/paint.cpp $SDL_COMPILE_FLAGS -o paint.o
-g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/curate.cpp $SDL_COMPILE_FLAGS -o curate.o
-g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/tags.cpp $SDL_COMPILE_FLAGS -o tags.o
-g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/thisorthat.cpp $SDL_COMPILE_FLAGS -o thisorthat.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/clip.cpp $SDL_COMPILE_FLAGS -o clip.o
-g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/copra.cpp $SDL_COMPILE_FLAGS -o copra.o
-# g++ -g console.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o console
 g++ -O3 -flto -fuse-linker-plugin -m64 counter.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o counter
 g++ -O3 -flto -fuse-linker-plugin -m64 colrname.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o colrname
 g++ -O3 -flto -fuse-linker-plugin -m64 midi.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o midi
-g++ -O3 -flto -fuse-linker-plugin -m64 jukebox.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o jukebox
 g++ -O3 -flto -fuse-linker-plugin -m64 toy.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o toy
 g++ -O3 -flto -fuse-linker-plugin -m64 mp3.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o mp3
 g++ -O3 -flto -fuse-linker-plugin -m64 paint.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o paint
-g++ -O3 -flto -fuse-linker-plugin -m64 curate.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o curate
-g++ -O3 -flto -fuse-linker-plugin -m64 tags.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o tags
-g++ -O3 -flto -fuse-linker-plugin -m64 thisorthat.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o thisorthat
 g++ -O3 -flto -fuse-linker-plugin -m64 clip.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o clip
-g++ -O3 -flto -fuse-linker-plugin -m64 copra.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o copra
 
 echo "*** Cleanup"
 rm *.o

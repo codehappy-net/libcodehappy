@@ -231,7 +231,7 @@ struct WavFile {
 #ifdef CODEHAPPY_SDL
 	// Play and render in SDL.
 	Mix_Chunk* sdl_mixchunk(void);
-	void play_wav(int loops = 0);
+	int play_wav(int loops = 0);
 #endif
 };
 
@@ -278,7 +278,7 @@ public:
 #ifdef CODEHAPPY_SDL
 	// Play and render in SDL.
 	Mix_Chunk* sdl_mixchunk(void);
-	void play_wav(int loops = 0);
+	int play_wav(int loops = 0);
 #endif
 
 private:
@@ -480,6 +480,25 @@ private:
 /*** Other exports: some functions related to MIDI rendering that may be useful. ***/
 extern int midi_programs_used(tml_message* midi, std::unordered_set<int>& programs);
 extern int midi_programs_used(const char* midi_path, std::unordered_set<int>& programs);
+
+#ifdef CODEHAPPY_SDL
+/* Render a MIDI file using the passed soundfont, and play it in the background. You can poll midi_playing() to
+   determine when the music has finished. Returns 0 if OK, -1 if the sound font can't be loaded, -2 if a MIDI is already playing,
+   or -3 if the MIDI file can't be loaded.
+
+   If you pass nullptr for 'soundfont' or 'soundfont_filename', the last-used soundfont is used (will return MIDI_SOUNDFONT_ERROR if
+   there isn't one.) */
+extern int play_midi(const char* midi_filename, const char* soundfont_filename);
+extern int play_midi(const char* midi_filename, tsf* soundfont);
+extern bool midi_playing();
+
+#define MIDI_OK		0
+#define MIDI_SOUNDFONT_ERROR	(-1)
+#define MIDI_ALREADY_PLAYING	(-2)
+#define MIDI_MIDI_ERROR	(-3)
+#define MIDI_SDL_ERROR		(-4)
+
+#endif  // CODEHAPPY_SDL
 
 #endif  // __WAV_RENDER__
 /* end wavrender.h */
