@@ -2132,6 +2132,7 @@ int play_midi(const char* midi_filename, tsf* soundfont) {
 
 	if (__wb_midi_last != nullptr)
 		delete __wb_midi_last;
+	__wb_midi_last = nullptr;
 	if (is_null(soundfont) && is_null(__sf_last))
 		return MIDI_SOUNDFONT_ERROR;
 	if (is_null(soundfont))
