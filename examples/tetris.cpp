@@ -257,8 +257,7 @@ Tetromino::Tetromino() {
 }
 
 bool Tetromino::solid_at(int x, int y) const {
-	int xd, yd;
-	xd = tetromino_shapes[typ][(rot == 1 || rot == 3) ? 1 : 0];
+	int yd;
 	yd = tetromino_shapes[typ][(rot == 1 || rot == 3) ? 0 : 1];
 	y -= (4 - yd);
 
@@ -271,7 +270,7 @@ bool Tetromino::solid_at(int x, int y) const {
 void Tetromino::make_new() {
 	typ = RandU32Range(0, num_tetrominos - 1);
 	rot = RandU32Range(0, 3);
-	colr = tetromino_colors[RandU32Range(0, num_colrs)];
+	colr = tetromino_colors[RandU32Range(0, num_colrs - 1)];
 }
 
 const int min_speed = 12;
