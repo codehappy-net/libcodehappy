@@ -23,7 +23,6 @@
 *.py
 *.rfi
 *.s
-*.sf2
 *.py
 *.wasm
 *.xlm
@@ -117,6 +116,7 @@ testpat
 testrng
 testsat
 testwav
+tetris
 textualize.sh
 thisorthat*
 tmp*

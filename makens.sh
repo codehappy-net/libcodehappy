@@ -32,6 +32,7 @@ g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/toy.cpp $SDL_COMPILE_FL
 g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/mp3.cpp $SDL_COMPILE_FLAGS -o mp3.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/paint.cpp $SDL_COMPILE_FLAGS -o paint.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -c examples/clip.cpp $SDL_COMPILE_FLAGS -o clip.o
+g++ -O3 -flto -fuse-linker-plugin -m64 -Iinc -DCODEHAPPY_NATIVE_SDL -c examples/tetris.cpp $SDL_COMPILE_FLAGS -o tetris.o
 g++ -O3 -flto -fuse-linker-plugin -m64 counter.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o counter
 g++ -O3 -flto -fuse-linker-plugin -m64 colrname.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o colrname
 g++ -O3 -flto -fuse-linker-plugin -m64 midi.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o midi
@@ -39,6 +40,7 @@ g++ -O3 -flto -fuse-linker-plugin -m64 toy.o bin/libcodehappys.a $SDL_LINKER_FLA
 g++ -O3 -flto -fuse-linker-plugin -m64 mp3.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o mp3
 g++ -O3 -flto -fuse-linker-plugin -m64 paint.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o paint
 g++ -O3 -flto -fuse-linker-plugin -m64 clip.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o clip
+g++ -O3 -flto -fuse-linker-plugin -m64 tetris.o bin/libcodehappys.a $SDL_LINKER_FLAGS -o tetris
 
 echo "*** Cleanup"
 rm *.o

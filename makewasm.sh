@@ -11,4 +11,4 @@ echo "*** Build the C++ library (nice single file build)"
 emcc -std=c++11 -O3 -flto -Iinc -sUSE_SDL -DALL_FONTS -DINCLUDE_EMBED -DCODEHAPPY_WASM -c -Wno-deprecated-register -Wno-parentheses -Wno-switch src/libcodehappy.cpp -o bin/libcodehappy.bc
 
 echo "*** Build example apps"
-emcc -O3 -flto -std=c++11 -sUSE_SDL -Iinc stars.cpp bin/libcodehappy.bc -o stars.js --preload-file assets-stars/ -s ALLOW_MEMORY_GROWTH=1
+emcc -O3 -flto -std=c++11 -sUSE_SDL -DCODEHAPPY_WASM -Iinc examples/tetris.cpp bin/libcodehappy.bc -o tetris.js --preload-file assets-tetris/ -s ALLOW_MEMORY_GROWTH=1

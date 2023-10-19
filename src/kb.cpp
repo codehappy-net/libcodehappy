@@ -472,23 +472,17 @@ KeyLast::KeyLast(void* display) {
 
 void KeyLast::save(void* display) {
 #ifdef CODEHAPPY_WASM
-/*
-	for (int e = 0; e < SKEY_TRACK_MAX; ++e) {
-		kbmap[e] = ((Display*)display)->key_down(e);
-	}
-*/	
 	int nk = 0;
 	u8* buf = (u8 *)SDL_GetKeyboardState(&nk);
 	for (int e = 0; e < nk && e < SKEY_TRACK_MAX; ++e) {
 		kbmap[e] = (buf[e] != 0);
 	}
-#else
-	// use SDL_KeyState() for more responsiveness
-	int nk;
-	SDL_PumpEvents();
-	u8* buf = (u8 *)SDL_GetKeyState(&nk);
-	for (int e = 0; e < nk && e < SKEY_TRACK_MAX; ++e) {
-		kbmap[e] = (buf[e] != 0);
+	for (; e < SKEY_TRACK_MAX; ++e) {
+		kbmap[e] = ((Display*)display)->key_down(e);
+	}
+#else	
+	for (int e = 0; e < SKEY_TRACK_MAX; ++e) {
+		kbmap[e] = ((Display*)display)->key_down(e);
 	}
 #endif	
 	mouse_state[MOUSEBUTTON_LEFT] = ((Display*)display)->mouse_l();
