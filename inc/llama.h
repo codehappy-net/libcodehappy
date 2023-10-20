@@ -95,11 +95,35 @@ enum InstructionType {
 
 typedef void (*LlamaCallback)(const char *);
 
+struct LlamaDefaults {
+	LlamaDefaults();
+	std::string model_path;
+	int top_k;
+	float top_p;
+	float temp;
+	float rp;
+	float fp;
+	int mirostat;
+	float miro_tau;
+	float miro_eta;
+	int main_gpu;
+	bool cpuonly;
+	int layers_gpu;
+	int vram_gb;
+	bool og_llama;
+};
+
+extern LlamaDefaults llama_defaults;
+
+/* Add Llama generation arguments to the ArgParse object. */
+extern void llama_args(ArgParse& ap);
+
 class Llama {
 public:
 	// We use lazy loading; we don't actually load the model until we need to generate.
 	Llama(const char* model_path, int vram_gb = 24, bool og_llama = false, bool is_70b = false);
 	Llama(const std::string& model_path, int vram_gb = 24, bool og_llama = false, bool is_70b = false);
+	Llama(const ArgParse& ap, const LlamaDefaults& defaults = llama_defaults);
 	~Llama();
 
 	// Tokenize the provided string. If the output vector "out" already has tokens in it, the

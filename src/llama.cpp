@@ -18,6 +18,135 @@ Llama::Llama(const std::string& model_path, int vram_gb, bool og_llama, bool is_
 	do_init(model_path.c_str(), vram_gb, og_llama, is_70b);
 }
 
+Llama::Llama(const ArgParse& ap, const LlamaDefaults& defaults) {
+	std::string model_path;
+	int iv;
+	float fv;
+	int vram_gb;
+
+	ap.value_str("llama-model", model_path);
+	if (model_path.empty())
+		model_path = defaults.model_path;
+	if (model_path.empty())
+		codehappy_cerr << "error: no model pathname provided\n";
+
+	vram_gb = defaults.vram_gb;
+	if (ap.flag_present("llama-vram")) {
+		iv = ap.value_int("llama-vram");
+		if (iv >= 0)
+			vram_gb = iv;
+		else
+			codehappy_cerr << "invalid VRAM GB: " << iv << "\n";
+	}
+
+	do_init(model_path.c_str(), vram_gb, defaults.og_llama, false);
+
+	// set each parameter according to the defaults or the ArgParse values.
+	if (defaults.top_k > 0)
+		params.top_k = defaults.top_k;
+	if (ap.flag_present("llama-top-k")) {
+		 iv = ap.value_int("llama-top-k");
+		 if (iv > 0)
+		 	params.top_k = iv;
+		 else
+		 	codehappy_cerr << "invalid top-k parameter value: " << iv << "\n";
+	}
+
+	if (defaults.top_p >= 0.)
+		params.top_p = defaults.top_p;
+	if (ap.flag_present("llama-top-p")) {
+		fv = (float) ap.value_double("llama-top-p");
+		if (fv >= 0.)
+			params.top_p = fv;
+		else
+			codehappy_cerr << "invalid top-p parameter value: " << fv << "\n";
+	}
+
+	if (defaults.temp >= 0.)
+		params.temp = defaults.temp;
+	if (ap.flag_present("llama-temp")) {
+		fv = (float) ap.value_double("llama-temp");
+		if (fv >= 0.)
+			params.temp = fv;
+		else
+			codehappy_cerr << "invalid temperature value: " << fv << "\n";
+	}
+
+	if (defaults.rp >= 0.)
+		params.repeat_penalty = defaults.rp;
+	if (ap.flag_present("llama-repeat")) {
+		fv = (float) ap.value_double("llama-repeat");
+		if (fv >= 0.)
+			params.repeat_penalty = fv;
+		else
+			codehappy_cerr << "invalid repetition penalty value: " << fv << "\n";
+	}
+
+	if (defaults.fp >= 0.)
+		params.frequency_penalty = defaults.fp;
+	if (ap.flag_present("llama-freq")) {
+		fv = (float) ap.value_double("llama-freq");
+		if (fv >= 0.)
+			params.frequency_penalty = fv;
+		else
+			codehappy_cerr << "invalid frequency penalty value: " << fv << "\n";
+	}
+
+	if (defaults.mirostat >= 0)
+		params.mirostat = defaults.mirostat;
+	if (ap.flag_present("llama-mirostat")) {
+		iv = ap.value_int("llama-mirostat");
+		if (iv >= 0)
+			params.mirostat = iv;
+		else
+			codehappy_cerr << "invalid mirostat type: " << iv << "\n";
+	}
+
+	if (defaults.miro_tau >= 0.)
+		params.mirostat_tau = defaults.miro_tau;
+	if (ap.flag_present("llama-tau")) {
+		fv = (float) ap.value_double("llama-tau");
+		if (fv >= 0.)
+			params.mirostat_tau = fv;
+		else
+			codehappy_cerr << "invalid mirostat tau value: " << fv << "\n";
+	}
+
+	if (defaults.miro_eta >= 0.)
+		params.mirostat_eta = defaults.miro_eta;
+	if (ap.flag_present("llama-eta")) {
+		fv = (float) ap.value_double("llama-eta");
+		if (fv >= 0.)
+			params.mirostat_eta = fv;
+		else
+			codehappy_cerr << "invalid mirostat eta value: " << fv << "\n";
+	}
+
+	if (defaults.main_gpu >= 0)
+		params.main_gpu = defaults.main_gpu;
+	if (ap.flag_present("llama-gpu")) {
+		iv = ap.value_int("llama-gpu");
+		if (iv >= 0)
+			params.main_gpu = iv;
+		else
+			codehappy_cerr << "invalid main gpu index: " << iv << "\n";
+	}
+
+	if (defaults.layers_gpu >= 0)
+		params.n_gpu_layers = defaults.layers_gpu;
+	if (ap.flag_present("llama-layers")) {
+		iv = ap.value_int("llama-layers");
+		if (iv >= 0)
+			params.n_gpu_layers = iv;
+		else
+			codehappy_cerr << "invalid layer count: " << iv << "\n";
+	}
+
+	if (ap.flag_present("cpuonly")) {
+		params.n_gpu_layers = 0;
+	}
+}
+
 void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_70b) {
 	log_disable();
 	model = nullptr;
@@ -1055,6 +1184,42 @@ int LlamaEmbeddingFolder::best_match(int file_idx, const LlamaEmbedding* le, dou
 	if (file_idx < 0 || file_idx >= files.size())
 		return -1;
 	return files[file_idx]->best_match(le, score);
+}
+
+LlamaDefaults::LlamaDefaults() {
+	top_k = -1;
+	top_p = -1.0f;
+	temp = -1.0f;
+	rp = -1.0f;
+	fp = -1.0f;
+	// note that, when using ArgParse + default arguments to initialize a model, that
+	// mirostat sampling is off by default, since it's a command line option
+	mirostat = 0;
+	miro_tau = -1.f;
+	miro_eta = -1.f;
+	main_gpu = -1;
+	cpuonly = false;
+	layers_gpu = -1;
+	vram_gb = 24;
+	og_llama = false;
+};
+
+LlamaDefaults llama_defaults;
+
+void llama_args(ArgParse& ap) {
+	ap.add_argument("llama-model", type_string, "path to the .GGUF-format large language model");
+	ap.add_argument("llama-top-k", type_int, "top k (most likely) parameter for sampling");
+	ap.add_argument("llama-top-p", type_double, "top p (cumulative probability) parameter for sampling");
+	ap.add_argument("llama-temp", type_double, "temperature for large language model sampling");
+	ap.add_argument("llama-repeat", type_double, "repetition penalty for large language model sampling");
+	ap.add_argument("llama-freq", type_double, "frequency penalty for large language model sampling");
+	ap.add_argument("llama-mirostat", type_int, "type of mirostat sampling to use (0 = none)");
+	ap.add_argument("llama-tau", type_double, "tau parameter for mirostat sampling");
+	ap.add_argument("llama-eta", type_double, "eta parameter for mirostat sampling");
+	ap.add_argument("llama-gpu", type_int, "index of the main GPU to use for large language model inference");
+	ap.add_argument("cpuonly", type_none, "run large language model inference CPU only");
+	ap.add_argument("llama-layers", type_int, "number of Llama layers to load onto GPU for inference");
+	ap.add_argument("llama-vram", type_int, "use this many GB of VRAM to determine default number of layers loaded to gpu");
 }
 
 #endif  // CODEHAPPY_CUDA
