@@ -24,9 +24,5 @@ g++ -std=c++11 -g -m64 -c -Iinc -Wno-unused-result -DCODEHAPPY_NATIVE_SDL -DALL_
 echo "*** Create the library archive"
 gcc-ar rcs bin/libcodehappysd.a *.o
 
-echo "*** Build some demo apps"
-g++ -g -m64 -Iinc -c examples/copra.cpp $SDL_COMPILE_FLAGS -o copra.o
-g++ -g -m64 copra.o bin/libcodehappysd.a $SDL_LINKER_FLAGS -o copra
-
 echo "*** Cleanup"
 rm *.o

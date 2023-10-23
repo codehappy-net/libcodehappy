@@ -43,81 +43,81 @@ Llama::Llama(const ArgParse& ap, const LlamaDefaults& defaults) {
 
 	// set each parameter according to the defaults or the ArgParse values.
 	if (defaults.top_k > 0)
-		params.top_k = defaults.top_k;
+		params.sparams.top_k = defaults.top_k;
 	if (ap.flag_present("llama-top-k")) {
 		 iv = ap.value_int("llama-top-k");
 		 if (iv > 0)
-		 	params.top_k = iv;
+		 	params.sparams.top_k = iv;
 		 else
 		 	codehappy_cerr << "invalid top-k parameter value: " << iv << "\n";
 	}
 
 	if (defaults.top_p >= 0.)
-		params.top_p = defaults.top_p;
+		params.sparams.top_p = defaults.top_p;
 	if (ap.flag_present("llama-top-p")) {
 		fv = (float) ap.value_double("llama-top-p");
 		if (fv >= 0.)
-			params.top_p = fv;
+			params.sparams.top_p = fv;
 		else
 			codehappy_cerr << "invalid top-p parameter value: " << fv << "\n";
 	}
 
 	if (defaults.temp >= 0.)
-		params.temp = defaults.temp;
+		params.sparams.temp = defaults.temp;
 	if (ap.flag_present("llama-temp")) {
 		fv = (float) ap.value_double("llama-temp");
 		if (fv >= 0.)
-			params.temp = fv;
+			params.sparams.temp = fv;
 		else
 			codehappy_cerr << "invalid temperature value: " << fv << "\n";
 	}
 
 	if (defaults.rp >= 0.)
-		params.repeat_penalty = defaults.rp;
+		params.sparams.penalty_repeat = defaults.rp;
 	if (ap.flag_present("llama-repeat")) {
 		fv = (float) ap.value_double("llama-repeat");
 		if (fv >= 0.)
-			params.repeat_penalty = fv;
+			params.sparams.penalty_repeat = fv;
 		else
 			codehappy_cerr << "invalid repetition penalty value: " << fv << "\n";
 	}
 
 	if (defaults.fp >= 0.)
-		params.frequency_penalty = defaults.fp;
+		params.sparams.penalty_freq = defaults.fp;
 	if (ap.flag_present("llama-freq")) {
 		fv = (float) ap.value_double("llama-freq");
 		if (fv >= 0.)
-			params.frequency_penalty = fv;
+			params.sparams.penalty_freq = fv;
 		else
 			codehappy_cerr << "invalid frequency penalty value: " << fv << "\n";
 	}
 
 	if (defaults.mirostat >= 0)
-		params.mirostat = defaults.mirostat;
+		params.sparams.mirostat = defaults.mirostat;
 	if (ap.flag_present("llama-mirostat")) {
 		iv = ap.value_int("llama-mirostat");
 		if (iv >= 0)
-			params.mirostat = iv;
+			params.sparams.mirostat = iv;
 		else
 			codehappy_cerr << "invalid mirostat type: " << iv << "\n";
 	}
 
 	if (defaults.miro_tau >= 0.)
-		params.mirostat_tau = defaults.miro_tau;
+		params.sparams.mirostat_tau = defaults.miro_tau;
 	if (ap.flag_present("llama-tau")) {
 		fv = (float) ap.value_double("llama-tau");
 		if (fv >= 0.)
-			params.mirostat_tau = fv;
+			params.sparams.mirostat_tau = fv;
 		else
 			codehappy_cerr << "invalid mirostat tau value: " << fv << "\n";
 	}
 
 	if (defaults.miro_eta >= 0.)
-		params.mirostat_eta = defaults.miro_eta;
+		params.sparams.mirostat_eta = defaults.miro_eta;
 	if (ap.flag_present("llama-eta")) {
 		fv = (float) ap.value_double("llama-eta");
 		if (fv >= 0.)
-			params.mirostat_eta = fv;
+			params.sparams.mirostat_eta = fv;
 		else
 			codehappy_cerr << "invalid mirostat eta value: " << fv << "\n";
 	}
@@ -196,8 +196,8 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	params.n_threads = std::max((int) std::thread::hardware_concurrency() / 2, 1);
 
 	// Generation parameters that I prefer.
-	params.temp = 0.9f;
-	params.mirostat = 2;
+	params.sparams.temp = 0.9f;
+	params.sparams.mirostat = 2;
 	remove_stop_str = false;
 }
 
@@ -258,18 +258,19 @@ void Llama::ensure_model_loaded() {
 		}
 		std::tie(model, ctx) = llama_init_from_gpt_params(params);
 		//assert(params.n_ctx <= llama_n_ctx_train(ctx));
-		if (params.n_ctx != llama_n_ctx_train(ctx)) {
-			codehappy_cerr << "*** Warning: model was trained on context size " << llama_n_ctx_train(ctx) << "; context size parameter is " << params.n_ctx << "\n";
+		if (params.n_ctx != llama_n_ctx_train(model)) {
+			codehappy_cerr << "*** Warning: model was trained on context size " << llama_n_ctx_train(model) << "; context size parameter is " << params.n_ctx << "\n";
 		}
 		// model warm-up
-		{
-		const std::vector<llama_token> tmp = { llama_token_bos(ctx), };
-		llama_eval(ctx, tmp.data(), tmp.size(), 0, params.n_threads);
-		llama_reset_timings(ctx);
-		}
+		// (NOTE: insert_bos takes care of this, surely?)
+		//{
+		//const std::vector<llama_token> tmp = { llama_token_bos(ctx), };
+		//llama_eval(ctx, tmp.data(), tmp.size(), 0, params.n_threads);
+		//llama_reset_timings(ctx);
+		//}
 		last_n_tokens.resize(params.n_ctx, 0);
 	}
-	if (nullptr == ctx_cfg && params.cfg_scale != 1.f) {
+	if (nullptr == ctx_cfg && params.sparams.cfg_scale != 1.f) {
 	        struct llama_context_params lparams = llama_context_params_from_gpt_params(params);
 	        ctx_cfg = llama_new_context_with_model(model, lparams);
 	}
@@ -282,7 +283,7 @@ void Llama::reset_contexts() {
 	if (ctx_cfg != nullptr)
 		llama_free(ctx_cfg);
 	ctx = llama_new_context_with_model(model, lparams);
-	if (params.cfg_scale != 1.f) {
+	if (params.sparams.cfg_scale != 1.f) {
 		ctx_cfg = llama_new_context_with_model(model, lparams);
 	}
 }
@@ -314,8 +315,8 @@ void Llama::ensure_grammar() {
 
 	grammar_parser::print_grammar(stderr, parsed_grammar);
         {
-            auto it = params.logit_bias.find(llama_token_eos(ctx));
-            if (it != params.logit_bias.end() && it->second == -INFINITY) {
+            auto it = params.sparams.logit_bias.find(llama_token_eos(ctx));
+            if (it != params.sparams.logit_bias.end() && it->second == -INFINITY) {
                 codehappy_cerr << "warning: EOS token is disabled, which will cause most grammars to fail\n";
             }
         }
@@ -501,7 +502,7 @@ void Llama::add_text(const char* str) {
 
 void Llama::tokenize_cfg_prompt() {
 	if (ctx_cfg != nullptr) {
-		std::string str_cp = params.cfg_negative_prompt;
+		std::string str_cp = params.sparams.cfg_negative_prompt;
         	// (no longer needed) str_cp.insert(0, 1, ' ');
         	guidance_inp = ::llama_tokenize(ctx_cfg, str_cp, true);
         	original_prompt_len = embd_inp.size();
@@ -512,24 +513,27 @@ void Llama::tokenize_cfg_prompt() {
 std::string Llama::text_from_tokens(const std::vector<llama_token>& toks) const {
 	std::string out;
 	for (const auto tok : toks) {
-		out += llama_token_to_str(ctx, tok);
+		out += llama_token_to_piece(ctx, tok);
 	}
 	return out;
 }
 
-void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, LlamaCallback clback) {
+void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, LlamaCallback clback, bool insert_bos) {
 	const int nctx = params.n_ctx - 4;
 	int nremain = get_tokens_predict(), npast = 0, npast_guidance = 0;
 	std::vector<llama_token> embd_guidance;
 
 	ensure_model_loaded();
 	ensure_grammar();
+	if (insert_bos && (embd_inp.empty() || embd_inp[0] != llama_token_bos(ctx))) {
+		embd_inp.insert(embd_inp.begin(), llama_token_bos(ctx));
+	}
 	if (embd_inp.size() > nctx) {
 		embd_inp.erase(embd_inp.begin(), embd_inp.begin() + embd_inp.size() - nctx);
 	}
 
 	std::vector<llama_token_data> candidates;
-	auto n_vocab = llama_n_vocab(ctx);
+	auto n_vocab = llama_n_vocab(model);
 	candidates.reserve(n_vocab);
 
 	for (int i = 0; i < embd_inp.size(); ++i) {
@@ -537,14 +541,19 @@ void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, Llama
 		last_n_tokens.push_back(embd_inp[i]);
 	}
 
+	struct llama_sampling_context* ctx_sampling = llama_sampling_init(params.sparams);
+
 	while (nremain != 0) {
 		if (embd_inp.size() > 0) {
 			// if the context has filled, let's move things up (keeping the original instruction, if present.) 
 			if (npast + (int) embd_inp.size() + std::max<int>(0, guidance_offset) > nctx) {
-				const int n_left = npast - keep_tok;
-				npast = std::max(1, keep_tok);
-				npast_guidance = std::max(1, keep_tok + guidance_offset);
-				embd_inp.insert(embd_inp.begin(), last_n_tokens.begin() + nctx - n_left / 2 - embd_inp.size(), last_n_tokens.end() - embd_inp.size());
+				const int n_left = npast - keep_tok - 1;
+				const int n_discard = n_left / 2;
+				llama_kv_cache_seq_rm(ctx, 0, keep_tok + 1, keep_tok + n_discard + 1);
+				llama_kv_cache_seq_shift(ctx, 0, keep_tok + 1 + n_discard, npast, -n_discard);
+				npast -= n_discard;
+				if (ctx_cfg != nullptr)
+					npast_guidance -= n_discard;
 			}
 
 			// evaluate classifier-free guidance prompt, if present.
@@ -568,7 +577,7 @@ void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, Llama
 				}
 				for (int i = 0; i < input_size; i += params.n_batch) {
 					int n_eval = std::min(input_size - i, params.n_batch);
-					if (llama_eval(ctx_cfg, input_buf + i, n_eval, npast_guidance, params.n_threads)) {
+					if (llama_decode(ctx_cfg, llama_batch_get_one(input_buf + i, n_eval, npast_guidance, 0))) {
 						fprintf(stderr, "%s : failed to eval\n", __func__);
 						exit(1);
 					}
@@ -582,7 +591,7 @@ void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, Llama
 				if (n_eval > params.n_batch) {
 					n_eval = params.n_batch;
 				}
-				if (llama_eval(ctx, &embd_inp[i], n_eval, npast, params.n_threads)) {
+				if (llama_decode(ctx, llama_batch_get_one(&embd_inp[i], n_eval, npast, 0))) {
 					fprintf(stderr, "%s : failed to eval\n", __func__);
 					exit(1);
 				}
@@ -593,12 +602,13 @@ void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, Llama
         	embd_inp.clear();
 		embd_guidance.clear();
 
-		llama_token id = llama_sample_token(ctx, ctx_cfg, grammar, params, last_n_tokens, candidates);
+		llama_token id = llama_sampling_sample(ctx_sampling, ctx, ctx_cfg);
+		llama_sampling_accept(ctx_sampling, ctx, id, true);
 
 		last_n_tokens.erase(last_n_tokens.begin());
 		last_n_tokens.push_back(id);
 		if (clback != nullptr) {
-			clback(llama_token_to_str(ctx, id).c_str());
+			clback(llama_token_to_piece(ctx, id).c_str());
 		}
 
 		--nremain;
@@ -608,7 +618,7 @@ void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, Llama
 		if (id == llama_token_eos(ctx))
 			break;
 		if (echo) {
-			fprintf(stdout, "%s", llama_token_to_str(ctx, id).c_str());
+			fprintf(stdout, "%s", llama_token_to_piece(ctx, id).c_str());
 			fflush(stdout);
 		}
 		if (remove_stop_string(toks_out)) {
@@ -654,14 +664,14 @@ bool Llama::remove_stop_string(std::vector<llama_token>& toks) {
 	return false;
 }
 
-void Llama::generate_tokens(std::vector<llama_token>& toks_out, int max_tokens, bool echo, LlamaCallback clback) {
+void Llama::generate_tokens(std::vector<llama_token>& toks_out, int max_tokens, bool echo, LlamaCallback clback, bool insert_bos) {
 	set_tokens_predict(max_tokens);
-	generate_tokens(toks_out, echo, clback);
+	generate_tokens(toks_out, echo, clback, insert_bos);
 }
 
-std::string Llama::generate_tokens(int max_tokens, bool echo, LlamaCallback clback) {
+std::string Llama::generate_tokens(int max_tokens, bool echo, LlamaCallback clback, bool insert_bos) {
 	std::vector<llama_token> toks_out;
-	generate_tokens(toks_out, max_tokens, echo, clback);
+	generate_tokens(toks_out, max_tokens, echo, clback, insert_bos);
 	return text_from_tokens(toks_out);
 }
 
@@ -803,27 +813,27 @@ u64 Llama::num_params() {
 
 int Llama::vocab_size() {
 	ensure_model_loaded();
-	return llama_model_n_vocab(model);
+	return llama_n_vocab(model);
 }
 
 int Llama::context_size() {
 	ensure_model_loaded();
-	return llama_model_n_ctx(model);
+	return llama_n_ctx(ctx);
 }
 
 int Llama::context_size_trained() {
 	ensure_model_loaded();
-	return llama_model_n_ctx_train(model);
+	return llama_n_ctx_train(model);
 }
 
 int Llama::num_layers() {
 	ensure_model_loaded();
-	return llama_model_n_layer(model);
+	return llama_n_layer(model);
 }
 
 int Llama::embedding_dimension() {
 	ensure_model_loaded();
-	return llama_n_embd(ctx);
+	return llama_n_embd(model);
 }
 
 int Llama::max_devices() const {
@@ -906,7 +916,7 @@ void Llama::embedding_for_prompt(const std::string& str, LlamaEmbedding* le) {
 	int npast = 0;
 	while (!toks.empty()) {
 		int ntok = std::min(params.n_batch, (int) toks.size());
-		if (llama_eval(ctx, toks.data(), ntok, npast, params.n_threads)) {
+		if (llama_decode(ctx, llama_batch_get_one(toks.data(), ntok, npast, 0))) {
 			codehappy_cerr << "Error in evaluation\n";
 			exit(1);
 		}
@@ -919,7 +929,7 @@ void Llama::embedding_for_prompt(const std::string& str, LlamaEmbedding* le) {
 		codehappy_cerr << "Null embedding array?\n";
 		exit(1);
 	}
-	le->copy_from_array(llama_n_embd(ctx), embeds);
+	le->copy_from_array(llama_n_embd(model), embeds);
 }
 
 LlamaEmbeddingFile* Llama::embeddings_for_file(const std::string& str, int n_tok) {

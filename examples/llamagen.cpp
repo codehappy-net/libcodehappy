@@ -12,20 +12,25 @@
 
 int app_main() {
 	ArgParse ap;
-	std::string model_path = "/home/exx/ml/llama-gguf/models/mythomax-l2-13b.Q8_0.gguf";
 	std::string input;
 
 	ap.add_argument("input", type_string, "Prompt string");
-	ap.add_argument("model", type_string, "Model (path to ggml-compatible .bin file, Mythomax 13B default)");
+	ap.add_argument("input_file", type_string, "Prompt as a text file");
+	llama_args(ap);
 	ap.ensure_args(argc, argv);
 	if (ap.flag_present("input")) {
 		input = ap.value_str("input");
 	}
-	if (ap.flag_present("model")) {
-		model_path = ap.value_str("model");
+	if (ap.flag_present("input_file")) {
+		input = ap.value_str("input_file");
+		if (!FileExists(input)) {
+			codehappy_cerr << "*** Error: unable to find prompt file " << input << "\n";
+			return 1;
+		}
+		input = string_from_text_file(input);
 	}
 	
-	Llama llama(model_path);
+	Llama llama(ap);
 	llama.session_prompt(input);
 
 	std::vector<llama_token> toks_out;

@@ -23,3 +23,4 @@ void ggml_cl_transform_tensor(void * data, struct ggml_tensor * tensor);
 #ifdef  __cplusplus
 }
 #endif
+

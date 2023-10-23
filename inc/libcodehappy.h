@@ -440,6 +440,13 @@ private:
 #include "external/ggml/llama.h"
 #include "external/ggml/build-info.h"
 #include "external/ggml/grammar-parser.h"
+#include "external/ggml/sampling.h"
+#include "external/ggml/train.h"
+
+// Stable Diffusion inference in ggml
+#include "external/stable-diffusion/stable-diffusion.h"
+#include "external/stable-diffusion/rng.h"
+#include "external/stable-diffusion/rng_philox.h"
 #endif  // CODEHAPPY_CUDA
 
 /*** Llama LM inference. ***/

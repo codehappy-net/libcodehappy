@@ -208,10 +208,11 @@ public:
 	// Generate tokens (up to max_tokens, if passed in, with < 0 meaning 'no token limit, generate to end of text'.)
 	// If 'echo' is true, the tokens will be printed to stdout as they are generated.
 	// If 'clback' is non-null, each token will be passed to the callback function as a C string.
-	void generate_tokens(std::vector<llama_token>& toks_out, bool echo = false, LlamaCallback clback = nullptr);
-	void generate_tokens(std::vector<llama_token>& toks_out, int max_tokens, bool echo = false, LlamaCallback clback = nullptr);
+	// If 'insert_bos' is true, a beginning-of-stream token is inserted first into the transformer.
+	void generate_tokens(std::vector<llama_token>& toks_out, bool echo = false, LlamaCallback clback = nullptr, bool insert_bos = true);
+	void generate_tokens(std::vector<llama_token>& toks_out, int max_tokens, bool echo = false, LlamaCallback clback = nullptr, bool insert_bos = true);
 	// Generate tokens and return them as a string.
-	std::string generate_tokens(int max_tokens = -1, bool echo = false, LlamaCallback clback = nullptr);
+	std::string generate_tokens(int max_tokens = -1, bool echo = false, LlamaCallback clback = nullptr, bool insert_bos = true);
 
 	// Threading for generation.
 	void set_nthreads(int threads)	{ params.n_threads = threads; }
@@ -223,39 +224,39 @@ public:
 	bool embeddings_enabled() const	{ return params.embedding; }
 
 	// Set various generation parameters.
-	void set_top_k(int top_k)		{ params.top_k = top_k; }
-	void set_top_p(float top_p)		{ params.top_p = top_p; }
-	void set_temp(float temp)		{ params.temp = temp; }
-	void set_repeat_penalty(float rp)	{ params.repeat_penalty = rp; }
-	void set_repeat_last_n(int n)		{ params.repeat_last_n = n; }
-	void set_frequency_penalty(float fp)	{ params.frequency_penalty = fp; }
-	void set_presence_penalty(float pp)	{ params.presence_penalty = pp; }
-	void set_mirostat(int mirostat)	{ params.mirostat = mirostat; }
-	void set_mirostat_tau(float tau)	{ params.mirostat_tau = tau; }
-	void set_mirostat_eta(float eta)	{ params.mirostat_eta = eta; }
+	void set_top_k(int top_k)		{ params.sparams.top_k = top_k; }
+	void set_top_p(float top_p)		{ params.sparams.top_p = top_p; }
+	void set_temp(float temp)		{ params.sparams.temp = temp; }
+	void set_repeat_penalty(float rp)	{ params.sparams.penalty_repeat = rp; }
+	void set_repeat_last_n(int n)		{ params.sparams.penalty_last_n = n; }
+	void set_frequency_penalty(float fp)	{ params.sparams.penalty_freq = fp; }
+	void set_presence_penalty(float pp)	{ params.sparams.penalty_present = pp; }
+	void set_mirostat(int mirostat)	{ params.sparams.mirostat = mirostat; }
+	void set_mirostat_tau(float tau)	{ params.sparams.mirostat_tau = tau; }
+	void set_mirostat_eta(float eta)	{ params.sparams.mirostat_eta = eta; }
 	void set_tokens_predict(int tok)	{ params.n_predict = tok; }
 	void set_context(int ctx)		{ params.n_ctx = ctx; }
 	void set_isn_type(InstructionType it)	{ isn_type = it; }
-	void set_cfg_neg_prompt(std::string& cfg_prompt)	{ params.cfg_negative_prompt = cfg_prompt; }
-	void set_cfg_scale(float cfg)				{ params.cfg_scale = cfg; }
+	void set_cfg_neg_prompt(std::string& cfg_prompt)	{ params.sparams.cfg_negative_prompt = cfg_prompt; }
+	void set_cfg_scale(float cfg)				{ params.sparams.cfg_scale = cfg; }
 	void set_stop_string(std::string& stop_str)		{ stop_string = stop_str; }
 	void set_remove_stop_string(bool rss)			{ remove_stop_str = rss; }
 
 	// Get various generation parameters.
-	int get_top_k() const			{ return params.top_k; }
-	float get_top_p() const		{ return params.top_p; }
-	float get_temp() const			{ return params.temp; }
-	float get_repeat_penalty() const	{ return params.repeat_penalty; }
-	int get_repeat_last_n()		{ return params.repeat_last_n; }
-	float get_frequency_penalty() const	{ return params.frequency_penalty; }
-	float get_presence_penalty() const	{ return params.presence_penalty; }
-	int get_mirostat() const		{ return params.mirostat; }
-	float get_mirostat_tau() const	{ return params.mirostat_tau; }
-	float get_mirostat_eta() const	{ return params.mirostat_eta; }
+	int get_top_k() const			{ return params.sparams.top_k; }
+	float get_top_p() const		{ return params.sparams.top_p; }
+	float get_temp() const			{ return params.sparams.temp; }
+	float get_repeat_penalty() const	{ return params.sparams.penalty_repeat; }
+	int get_repeat_last_n()		{ return params.sparams.penalty_last_n; }
+	float get_frequency_penalty() const	{ return params.sparams.penalty_freq; }
+	float get_presence_penalty() const	{ return params.sparams.penalty_present; }
+	int get_mirostat() const		{ return params.sparams.mirostat; }
+	float get_mirostat_tau() const	{ return params.sparams.mirostat_tau; }
+	float get_mirostat_eta() const	{ return params.sparams.mirostat_eta; }
 	int get_tokens_predict() const	{ return params.n_predict; }
 	InstructionType get_isn_type() const	{ return isn_type; }
-	std::string get_cfg_neg_prompt() const	{ return params.cfg_negative_prompt; }
-	float get_cfg_scale() const			{ return params.cfg_scale; }
+	std::string get_cfg_neg_prompt() const	{ return params.sparams.cfg_negative_prompt; }
+	float get_cfg_scale() const			{ return params.sparams.cfg_scale; }
 	std::string get_stop_string() const		{ return stop_string; }
 	bool get_remove_stop_string() const		{ return remove_stop_str; }
 
@@ -307,7 +308,6 @@ private:
 	bool remove_stop_string(std::vector<llama_token>& toks);
 	void do_init(const char* model_path, int vram_gb, bool og_llama, bool is_70b);
 	
-	// TODO: implement the model grammar generation.
 	gpt_params params;
 	// TODO: static cache, if multiple Llama objects are created that use the same model, just load it once and share between class instances.
 	llama_model * model;

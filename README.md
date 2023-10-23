@@ -10,7 +10,7 @@ the software released in my GitHub depends on this library.
 - Lots of functionality, convenience, and syntactic sugar features provided. Really. A lot. A true tinkerer's toybox: 2-D drawing, GUI controls, waveform synthesis, various non-linear optimization libraries including genetic optimization and ANNs, large language model inference with GPU acceleration, etc.
 - Performance for most features somewhere between acceptable and world-beating. Any modern compiler with link-time optimizations does good things with the code.
 - Build process is simple.
-- Native apps have no external dependencies except pthread, GUI native apps need only SDL additionally, apps using the audio features need  SDL_mixer, WASM apps use Emscripten and its built-in SDL implementation. SDL binaries included for Win64, for Linux you'll need to install via apt-get. GPU accelerated apps need NVIDIA's CUDA developer toolkit.
+- Native apps have no external dependencies except pthread, GUI native apps need only SDL and SDL_mixer additionally, WASM apps use Emscripten and its built-in SDL implementation. SDL binaries included for Win64, for Linux you'll need to install via apt-get. GPU accelerated apps need NVIDIA's CUDA developer toolkit.
 - Mostly easy to read, APIs are pretty simple and flexible, and it feels good to write code in, at least for me.
 
 ### Bad things about it:
@@ -43,6 +43,7 @@ Authors of other bits of code and the associated licensing include:
 - Tom St Denis, various number theoretic functions and SHA family hashes (CC0)
 - Yusuke Suzuki, for console-colors (MIT)
 - Bob Jenkins, Spooky Hash (CC0)
+- leejet, for Stable Diffusion 1.x/2.x LDM inference in ggml (MIT)
 - Dr. Tim Ferguson, for codecs for various old video formats (CC with attribution)
 - Guillaume Chereau, portable file dialogs and quaternion library (MIT)
 - Arian Rezazadeh, clipboard support library (MIT)
@@ -64,7 +65,7 @@ The make* scripts in the root directory build the library and example apps, .sh 
 - *makens*: Native + SDL build (for windowed apps or apps using SDL audio), release, output is libcodehappys.a
 - *makensd*: Native + SDL build (for windowed apps or apps using SDL audio), debug, output is libcodehappysd.a
 - *makecuda*: Native build (for terminal/console apps) with CUDA support, release, output is libcodehappycuda.a
-- *makecudad*: Native build (for terminal/console apps) with CUDA support, debug, output is libcodehappycudadebug.a
+- *makecudad*: Native build (for terminal/console apps) with CUDA support, debug, output is libcodehappycudad.a
 - *makecudas*: Native + SDL build (for windowed apps or apps using SDL audio) with CUDA support, release, output is libcodehappycudas.a
 - *makecudasd*: Native + SDL build (for windowed apps or apps using SDL audio) with CUDA support, debug, output is libcodehappycudasd.a
 - *makewasm*: WebAssembly + Emscripten build (for in-browser apps), output is libcodehappy.bc.
