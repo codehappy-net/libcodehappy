@@ -1060,9 +1060,8 @@ bool is_codehappy_verbose() {
 #include "split.cpp"
 #include "textdataset.cpp"
 #include "llama.cpp"
-#ifdef CODEHAPPY_CUDA
 #include "external/stable-diffusion/stable-diffusion.cpp"
-#endif  // CODEHAPPY_CUDA
+#include "ldm.cpp"
 
 // SQLite is compiled separately (it's C99.)
 

@@ -1,5 +1,7 @@
 ## libcodehappy
 
+*"Make hay while the sun shines."*
+
 Yet another cross-platform library for building useful, portable applications in C++. Includes libraries written by me as well as a collection of
 useful libraries by others released under permissive licenses (MIT, CC0, zlib.) This is currently my C++ developer toolkit: much of 
 the software released in my GitHub depends on this library.
@@ -7,10 +9,10 @@ the software released in my GitHub depends on this library.
 ### Good things about it:
 
 - You can build Windows, Linux, or WASM apps that run in-browser from the same source code base. Supports Win64 native, Linux native, or WebAssembly apps, terminal or windowed, in C++11, with minimal boilerplate. Good for tools, games, etc. Tested in Windows 7/8/10/11 and Ubuntu 20.04.
-- Lots of functionality, convenience, and syntactic sugar features provided. Really. A lot. A true tinkerer's toybox: 2-D drawing, GUI controls, waveform synthesis, various non-linear optimization libraries including genetic optimization and ANNs, large language model inference with GPU acceleration, etc.
+- Lots of functionality, convenience, and syntactic sugar features provided. Really. A lot. A true tinkerer's toybox: 2-D drawing, GUI controls, waveform synthesis, various non-linear optimization libraries including genetic optimization and ANNs, large language model inference on CPU or with GPU acceleration, etc.
 - Performance for most features somewhere between acceptable and world-beating. Any modern compiler with link-time optimizations does good things with the code.
 - Build process is simple.
-- Native apps have no external dependencies except pthread, GUI native apps need only SDL and SDL_mixer additionally, WASM apps use Emscripten and its built-in SDL implementation. SDL binaries included for Win64, for Linux you'll need to install via apt-get. GPU accelerated apps need NVIDIA's CUDA developer toolkit.
+- Native apps have no external dependencies except pthread and the standard library, GUI native apps need only SDL and SDL_mixer additionally, WASM apps use Emscripten and its built-in SDL implementation. SDL binaries included for Win64, for Linux you'll need to install via apt-get. GPU accelerated apps need NVIDIA's CUDA developer toolkit.
 - Mostly easy to read, APIs are pretty simple and flexible, and it feels good to write code in, at least for me.
 
 ### Bad things about it:
@@ -26,7 +28,7 @@ the software released in my GitHub depends on this library.
 
 ### Author credits and license
 
-Code under src/ and inc/ not otherwise marked is by me, Chris Street. That code is made available under MIT license: the software is presented as is, without warranty of any kind, but may be used in other projects as long as the copyright notice is included in all copies or substantial portions of the software.
+Code not otherwise marked is by me, Chris Street. That code is made available under MIT license: the software is presented as is, without warranty of any kind, but may be used in other projects as long as the copyright notice is included in all copies or substantial portions of the software.
 
 Authors of other bits of code and the associated licensing include:
 
@@ -68,5 +70,5 @@ The make* scripts in the root directory build the library and example apps, .sh 
 - *makecudad*: Native build (for terminal/console apps) with CUDA support, debug, output is libcodehappycudad.a
 - *makecudas*: Native + SDL build (for windowed apps or apps using SDL audio) with CUDA support, release, output is libcodehappycudas.a
 - *makecudasd*: Native + SDL build (for windowed apps or apps using SDL audio) with CUDA support, debug, output is libcodehappycudasd.a
-- *makewasm*: WebAssembly + Emscripten build (for in-browser apps), output is libcodehappy.bc.
+- *makewasm*: WebAssembly + Emscripten build (for in-browser apps), no WebGPU acceleration yet! :-), output is libcodehappy.bc.
 

@@ -10,7 +10,6 @@
 ***/
 #ifndef __LLAMA_CODEHAPPY
 #define __LLAMA_CODEHAPPY
-#ifdef  CODEHAPPY_CUDA
 
 class Llama;
 
@@ -338,15 +337,7 @@ private:
 extern bool ggml_backend_is_init();
 extern void free_llama_backend();
 
-#else  // !CODEHAPPY_CUDA
-
-/* stub class */
-class Llama {
-	Llama();
-};
-#endif  // CODEHAPPY_CUDA
-
-// Helper functions exported even in non-CUDA builds.
+// Helper functions.
 
 /* find the last occurrence of 'needle' in the string 'haystack' (returns nullptr if none) */
 extern const char* find_last_str(const char* haystack, const char* needle);

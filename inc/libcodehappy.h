@@ -430,11 +430,11 @@ private:
 /*** Text datasets. ***/
 #include "textdataset.h"
 
-/******************** libcodehappy CUDA stuff ********************/
-#ifdef CODEHAPPY_CUDA
-// GGML -- extremely useful C++ deep learning library
+/*** GGML -- extremely useful C++ deep learning library ***/
 #define GGML_USE_K_QUANTS
+#ifdef CODEHAPPY_CUDA
 #define GGML_USE_CUBLAS
+#endif
 #define LLAMA_API_INTERNAL
 #include "external/ggml/common.h"
 #include "external/ggml/llama.h"
@@ -443,14 +443,16 @@ private:
 #include "external/ggml/sampling.h"
 #include "external/ggml/train.h"
 
-// Stable Diffusion inference in ggml
+/*** Stable Diffusion inference in ggml ***/
 #include "external/stable-diffusion/stable-diffusion.h"
 #include "external/stable-diffusion/rng.h"
 #include "external/stable-diffusion/rng_philox.h"
-#endif  // CODEHAPPY_CUDA
 
 /*** Llama LM inference. ***/
 #include "llama.h"
+
+/*** Latent diffusion model code (incl. SDServer) ***/
+#include "ldm.h"
 
 /*** Application's main declaration. ***/
 #if defined(CODEHAPPY_NATIVE) && defined(CODEHAPPY_SDL) && defined(CODEHAPPY_WINDOWS)

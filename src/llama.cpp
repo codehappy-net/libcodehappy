@@ -8,8 +8,6 @@
 	Chris Street, 2023
 
 ***/
-#ifdef  CODEHAPPY_CUDA
-
 Llama::Llama(const char* model_path, int vram_gb, bool og_llama, bool is_70b) {
 	do_init(model_path, vram_gb, og_llama, is_70b);
 }
@@ -1231,8 +1229,6 @@ void llama_args(ArgParse& ap) {
 	ap.add_argument("llama-layers", type_int, "number of Llama layers to load onto GPU for inference");
 	ap.add_argument("llama-vram", type_int, "use this many GB of VRAM to determine default number of layers loaded to gpu");
 }
-
-#endif  // CODEHAPPY_CUDA
 
 /* helper functions */
 const char* find_last_str(const char* haystack, const char* needle) {
