@@ -3233,8 +3233,6 @@ class StableDiffusionGGML {
         struct ggml_tensor* c = ggml_new_tensor_4d(res_ctx, GGML_TYPE_F32, 1024, 2, 1, 1);
         ggml_set_f32(c, 0.5);
 
-        struct ggml_cplan cplan;
-
         size_t ctx_size = 10 * 1024 * 1024;  // 10MB
         // calculate the amount of memory required
         {
@@ -3259,7 +3257,7 @@ class StableDiffusionGGML {
             ctx_size += ggml_used_mem(ctx) + ggml_used_mem_of_data(ctx);
 
             struct ggml_cgraph* diffusion_graph = ggml_build_forward_ctx(ctx, out);
-            cplan = ggml_graph_plan(diffusion_graph, n_threads);
+            struct ggml_cplan cplan = ggml_graph_plan(diffusion_graph, n_threads);
 
             ctx_size += cplan.work_size;
             SD_LOG_DEBUG("diffusion context need %.2fMB static memory, with work_size needing %.2fMB",
@@ -3292,7 +3290,7 @@ class StableDiffusionGGML {
         ggml_hold_dynamic_tensor(out);
 
         struct ggml_cgraph* diffusion_graph = ggml_build_forward_ctx(ctx, out);
-        cplan = ggml_graph_plan(diffusion_graph, n_threads);
+        struct ggml_cplan cplan = ggml_graph_plan(diffusion_graph, n_threads);
 
         ggml_set_dynamic(ctx, false);
         struct ggml_tensor* buf = ggml_new_tensor_1d(ctx, GGML_TYPE_I8, cplan.work_size);
@@ -3337,7 +3335,6 @@ class StableDiffusionGGML {
                                                             true);
         std::vector<int>& tokens = tokens_and_weights.first;
         std::vector<float>& weights = tokens_and_weights.second;
-        struct ggml_cplan cplan;
         size_t ctx_size = 10 * 1024 * 1024;  // 10MB
         // calculate the amount of memory required
         {
@@ -3359,8 +3356,8 @@ class StableDiffusionGGML {
 
             struct ggml_tensor* hidden_states = cond_stage_model.text_model.forward(ctx, input_ids);
 
-            struct ggml_cgraph* cond_graph = ggml_build_forward_ctx(ctx, hidden_states);
-            cplan = ggml_graph_plan(cond_graph, n_threads);
+            struct ggml_cgraph cond_graph = ggml_build_forward(hidden_states);
+            struct ggml_cplan cplan = ggml_graph_plan(&cond_graph, n_threads);
 
             ctx_size += cplan.work_size;
 
@@ -3472,7 +3469,6 @@ class StableDiffusionGGML {
         // print_ggml_tensor(x_t);
         struct ggml_tensor* x = ggml_dup_tensor(res_ctx, x_t);
         copy_ggml_tensor(x, x_t);
-        struct ggml_cplan cplan;
 
         size_t ctx_size = 10 * 1024 * 1024;  // 10MB
         // calculate the amount of memory required
@@ -3500,7 +3496,7 @@ class StableDiffusionGGML {
             ctx_size += ggml_used_mem(ctx) + ggml_used_mem_of_data(ctx);
 
             struct ggml_cgraph* diffusion_graph = ggml_build_forward_ctx(ctx, out);
-            cplan = ggml_graph_plan(diffusion_graph, n_threads);
+            struct ggml_cplan cplan = ggml_graph_plan(diffusion_graph, n_threads);
 
             ctx_size += cplan.work_size;
             SD_LOG_DEBUG("diffusion context need %.2fMB static memory, with work_size needing %.2fMB",
@@ -3533,7 +3529,7 @@ class StableDiffusionGGML {
         ggml_hold_dynamic_tensor(out);
 
         struct ggml_cgraph* diffusion_graph = ggml_build_forward_ctx(ctx, out);
-        cplan = ggml_graph_plan(diffusion_graph, n_threads);
+        struct ggml_cplan cplan = ggml_graph_plan(diffusion_graph, n_threads);
 
         ggml_set_dynamic(ctx, false);
         struct ggml_tensor* buf = ggml_new_tensor_1d(ctx, GGML_TYPE_I8, cplan.work_size);
@@ -4044,7 +4040,6 @@ class StableDiffusionGGML {
         int64_t W = x->ne[0];
         int64_t H = x->ne[1];
         struct ggml_tensor* result = NULL;
-        struct ggml_cplan cplan;
 
         // calculate the amount of memory required
         size_t ctx_size = 10 * 1024 * 1024;  // 10MB
@@ -4065,7 +4060,7 @@ class StableDiffusionGGML {
             ctx_size += ggml_used_mem(ctx) + ggml_used_mem_of_data(ctx);
 
             struct ggml_cgraph* vae_graph = ggml_build_forward_ctx(ctx, moments);
-            cplan = ggml_graph_plan(vae_graph, n_threads);
+            struct ggml_cplan cplan = ggml_graph_plan(vae_graph, n_threads);
 
             ctx_size += cplan.work_size;
             SD_LOG_DEBUG("vae context need %.2fMB static memory, with work_size needing %.2fMB",
@@ -4167,7 +4162,6 @@ class StableDiffusionGGML {
         int64_t W = z->ne[0];
         int64_t H = z->ne[1];
         struct ggml_tensor* result_img = NULL;
-        struct ggml_cplan cplan;
 
         {
             float* vec = (float*)z->data;
@@ -4195,7 +4189,7 @@ class StableDiffusionGGML {
             ctx_size += ggml_used_mem(ctx) + ggml_used_mem_of_data(ctx);
 
             struct ggml_cgraph* vae_graph = ggml_build_forward_ctx(ctx, img);
-            cplan = ggml_graph_plan(vae_graph, n_threads);
+            struct ggml_cplan cplan = ggml_graph_plan(vae_graph, n_threads);
 
             ctx_size += cplan.work_size;
             SD_LOG_DEBUG("vae context need %.2fMB static memory, with work_size needing %.2fMB",
