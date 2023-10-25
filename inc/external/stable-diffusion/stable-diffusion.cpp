@@ -926,6 +926,9 @@ struct FrozenCLIPEmbedderWithCustomWords {
 	// 	weights.push_back(1.0);
 	// }
 	// std::cout << "]\n";
+	for (int i = 0; i < tokens.size(); ++i) {
+		weights.push_back(1.0);
+	}
 
 	return { tokens, weights };
     }
