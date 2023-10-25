@@ -16,7 +16,7 @@
 int app_main() {
 	ArgParse ap;
 	std::string model_path, prompt, neg_prompt, out_path = "output.png";
-	int w = 512, h = 512, threads = -1;
+	int w = 512, h = 512, threads = -1, steps = 30;
 	double cfg = 7.0;
 
 	ap.add_argument("w", type_int, "Width in pixels (default is 512)", &w);
@@ -27,6 +27,7 @@ int app_main() {
 	ap.add_argument("model", type_string, "Path to Stable Diffusion model in .gguf format");
 	ap.add_argument("out", type_string, "Output path for the generated image (default is 'output.png')");
 	ap.add_argument("threads", type_int, "Number of computational threads", &threads);
+	ap.add_argument("steps", type_int, "Number of denoising steps", &steps);
 	ap.ensure_args(argc, argv);
 
 	ap.value_str("prompt", prompt);
@@ -36,6 +37,7 @@ int app_main() {
 
 	if (threads > 0)
 		sd_server.set_nthreads((u32) threads);
+	sd_server.set_steps((u32) steps);
 
 	if (model_path.empty()) {
 		std::cout << "Attempting to load a default SD model.\n";
@@ -55,6 +57,7 @@ int app_main() {
 	std::cout << "Dimensions: " << w << " x " << h << "\n";
 	std::cout << "Classifier-free guidance scale: " << cfg << "\n";
 	std::cout << "Number of CPU threads: " << sd_server.get_nthreads() << "\n";
+	std::cout << "Denoising steps: " << sd_server.get_steps() << "\n";
 
 	SBitmap* out = sd_server.txt2img(prompt, neg_prompt, w, h, cfg);
 

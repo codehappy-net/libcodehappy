@@ -342,7 +342,55 @@ class CLIPTokenizer {
         return tokens;
     }
 
+    std::vector<int> greedy_encode(std::string text) {
+	/* CMS: this tokenizer gives results more consistent with Python reference implementations.
+    	        The algorithm is simple and brute force: when a denoising step takes less than 10 s on CPU
+    	        I can worry about perf in the CLIP tokenizer... */
+	std::vector<int> ret;
+	text = whitespace_clean(text);
+	std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return std::tolower(c); });
+	const char * w = text.c_str();
+
+	forever {
+		int maxlen = 0, advance = 0, best_match = 0;
+		if (!(*w))
+			break;
+		for (const auto& ey : encoder) {
+			const char* tok = ey.first.c_str();
+			int32_t tok_id = ey.second;
+			int len = strlen(tok), len_adv;
+			bool eow = false;
+			if (strstr(tok, "</w>") != nullptr) {
+				len -= 4;
+				eow = true;
+			}
+			len_adv = len;
+			if (!strncmp(w, tok, len)) {
+				if (eow) {
+					const char * w2 = w + len;
+					if (*w2 && !isspace(*w2))
+						continue;
+					if (*w2 != 0)
+						len_adv++;
+					++len;
+				}
+				if (len > maxlen) {
+					maxlen = len;
+					advance = len_adv;
+					best_match = tok_id;
+				}
+			}
+		}
+		ship_assert(advance > 0);
+		ret.push_back(best_match);
+		w += advance;
+	}
+
+	return ret;
+    }
+
     std::vector<int> encode(std::string text) {
+        ship_assert(false);
         std::string original_text = text;
         std::vector<int32_t> bpe_tokens;
         text = whitespace_clean(text);
@@ -801,6 +849,9 @@ struct FrozenCLIPEmbedderWithCustomWords {
     std::pair<std::vector<int>, std::vector<float>> tokenize(std::string text,
                                                              size_t max_length = 0,
                                                              bool padding = false) {
+        /* CMS: all of this is don't. the original author intended to add prompt weighting and such, but this gives
+                plainly wrong results */
+#ifdef BROKEN
         auto parsed_attention = parse_prompt_attention(text);
 
         {
@@ -845,12 +896,38 @@ struct FrozenCLIPEmbedderWithCustomWords {
             }
         }
 
-        // for (int i = 0; i < tokens.size(); i++) {
-        //     std::cout << tokens[i] << ":" << weights[i] << ", ";
-        // }
-        // std::cout << std::endl;
-
         return {tokens, weights};
+#endif  // BROKEN
+
+	/* CMS: this implementation gives results more consistent with Python reference implementations. let's use this. */
+	std::vector<int> tokens;
+	std::vector<float> weights;
+
+	tokens = tokenizer.greedy_encode(text);
+	tokens.insert(tokens.begin(), BOS_TOKEN_ID);
+	if (max_length > 0) {
+		if (tokens.size() > max_length - 1) {
+			tokens.resize(max_length - 1);
+			tokens.push_back(EOS_TOKEN_ID);
+		} else {
+			tokens.push_back(EOS_TOKEN_ID);
+			if (padding) {
+				int pad_token_id = PAD_TOKEN_ID;
+				if (model_type == SD2) {
+					pad_token_id = 0;
+				}
+				tokens.insert(tokens.end(), max_length - tokens.size(), pad_token_id);
+			}
+		}
+	}
+	// std::cout << "Tokenized: [";
+	// for (int i = 0; i < tokens.size(); ++i) {
+	// 	std::cout << tokens[i] << ", ";
+	// 	weights.push_back(1.0);
+	// }
+	// std::cout << "]\n";
+
+	return { tokens, weights };
     }
 };
 
@@ -2894,6 +2971,7 @@ class StableDiffusionGGML {
 
                 cond_stage_model.tokenizer.add_token(word, i);
             }
+
         }
 
         // create the ggml context for network params
@@ -3155,6 +3233,8 @@ class StableDiffusionGGML {
         struct ggml_tensor* c = ggml_new_tensor_4d(res_ctx, GGML_TYPE_F32, 1024, 2, 1, 1);
         ggml_set_f32(c, 0.5);
 
+        struct ggml_cplan cplan;
+
         size_t ctx_size = 10 * 1024 * 1024;  // 10MB
         // calculate the amount of memory required
         {
@@ -3179,7 +3259,7 @@ class StableDiffusionGGML {
             ctx_size += ggml_used_mem(ctx) + ggml_used_mem_of_data(ctx);
 
             struct ggml_cgraph* diffusion_graph = ggml_build_forward_ctx(ctx, out);
-            struct ggml_cplan cplan = ggml_graph_plan(diffusion_graph, n_threads);
+            cplan = ggml_graph_plan(diffusion_graph, n_threads);
 
             ctx_size += cplan.work_size;
             SD_LOG_DEBUG("diffusion context need %.2fMB static memory, with work_size needing %.2fMB",
@@ -3212,7 +3292,7 @@ class StableDiffusionGGML {
         ggml_hold_dynamic_tensor(out);
 
         struct ggml_cgraph* diffusion_graph = ggml_build_forward_ctx(ctx, out);
-        struct ggml_cplan cplan = ggml_graph_plan(diffusion_graph, n_threads);
+        cplan = ggml_graph_plan(diffusion_graph, n_threads);
 
         ggml_set_dynamic(ctx, false);
         struct ggml_tensor* buf = ggml_new_tensor_1d(ctx, GGML_TYPE_I8, cplan.work_size);
@@ -3257,6 +3337,7 @@ class StableDiffusionGGML {
                                                             true);
         std::vector<int>& tokens = tokens_and_weights.first;
         std::vector<float>& weights = tokens_and_weights.second;
+        struct ggml_cplan cplan;
         size_t ctx_size = 10 * 1024 * 1024;  // 10MB
         // calculate the amount of memory required
         {
@@ -3278,8 +3359,9 @@ class StableDiffusionGGML {
 
             struct ggml_tensor* hidden_states = cond_stage_model.text_model.forward(ctx, input_ids);
 
-            struct ggml_cgraph cond_graph = ggml_build_forward(hidden_states);
-            struct ggml_cplan cplan = ggml_graph_plan(&cond_graph, n_threads);
+            struct ggml_cgraph* cond_graph = ggml_build_forward_ctx(ctx, hidden_states);
+            cplan = ggml_graph_plan(cond_graph, n_threads);
+
             ctx_size += cplan.work_size;
 
             ctx_size += ggml_used_mem(ctx) + ggml_used_mem_of_data(ctx);
@@ -3390,6 +3472,7 @@ class StableDiffusionGGML {
         // print_ggml_tensor(x_t);
         struct ggml_tensor* x = ggml_dup_tensor(res_ctx, x_t);
         copy_ggml_tensor(x, x_t);
+        struct ggml_cplan cplan;
 
         size_t ctx_size = 10 * 1024 * 1024;  // 10MB
         // calculate the amount of memory required
@@ -3417,7 +3500,7 @@ class StableDiffusionGGML {
             ctx_size += ggml_used_mem(ctx) + ggml_used_mem_of_data(ctx);
 
             struct ggml_cgraph* diffusion_graph = ggml_build_forward_ctx(ctx, out);
-            struct ggml_cplan cplan = ggml_graph_plan(diffusion_graph, n_threads);
+            cplan = ggml_graph_plan(diffusion_graph, n_threads);
 
             ctx_size += cplan.work_size;
             SD_LOG_DEBUG("diffusion context need %.2fMB static memory, with work_size needing %.2fMB",
@@ -3450,7 +3533,7 @@ class StableDiffusionGGML {
         ggml_hold_dynamic_tensor(out);
 
         struct ggml_cgraph* diffusion_graph = ggml_build_forward_ctx(ctx, out);
-        struct ggml_cplan cplan = ggml_graph_plan(diffusion_graph, n_threads);
+        cplan = ggml_graph_plan(diffusion_graph, n_threads);
 
         ggml_set_dynamic(ctx, false);
         struct ggml_tensor* buf = ggml_new_tensor_1d(ctx, GGML_TYPE_I8, cplan.work_size);
@@ -3961,6 +4044,7 @@ class StableDiffusionGGML {
         int64_t W = x->ne[0];
         int64_t H = x->ne[1];
         struct ggml_tensor* result = NULL;
+        struct ggml_cplan cplan;
 
         // calculate the amount of memory required
         size_t ctx_size = 10 * 1024 * 1024;  // 10MB
@@ -3981,7 +4065,7 @@ class StableDiffusionGGML {
             ctx_size += ggml_used_mem(ctx) + ggml_used_mem_of_data(ctx);
 
             struct ggml_cgraph* vae_graph = ggml_build_forward_ctx(ctx, moments);
-            struct ggml_cplan cplan = ggml_graph_plan(vae_graph, n_threads);
+            cplan = ggml_graph_plan(vae_graph, n_threads);
 
             ctx_size += cplan.work_size;
             SD_LOG_DEBUG("vae context need %.2fMB static memory, with work_size needing %.2fMB",
@@ -4083,6 +4167,7 @@ class StableDiffusionGGML {
         int64_t W = z->ne[0];
         int64_t H = z->ne[1];
         struct ggml_tensor* result_img = NULL;
+        struct ggml_cplan cplan;
 
         {
             float* vec = (float*)z->data;
@@ -4110,7 +4195,7 @@ class StableDiffusionGGML {
             ctx_size += ggml_used_mem(ctx) + ggml_used_mem_of_data(ctx);
 
             struct ggml_cgraph* vae_graph = ggml_build_forward_ctx(ctx, img);
-            struct ggml_cplan cplan = ggml_graph_plan(vae_graph, n_threads);
+            cplan = ggml_graph_plan(vae_graph, n_threads);
 
             ctx_size += cplan.work_size;
             SD_LOG_DEBUG("vae context need %.2fMB static memory, with work_size needing %.2fMB",

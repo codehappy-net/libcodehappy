@@ -53,7 +53,7 @@ SDServer::SDServer() {
 	steps = 20;
 	last_seed = -1;
 	variation_seed = 43;
-	sampler = sd_heun;
+	sampler = sd_euler;
 	scheduler = sd_karras;
 }
 
@@ -78,6 +78,8 @@ SBitmap* SDServer::txt2img(const std::string& prompt, const std::string& neg_pro
 		seed = rng_seed;
 	} else {
 		seed = RandI64();
+		if (seed < 0)
+			seed = -seed;
 	}
 
 	if (variation_weight == 0.0) {
@@ -143,6 +145,8 @@ SBitmap* SDServer::img2img(SBitmap* init_img, double img_strength, const std::st
 		seed = rng_seed;
 	} else {
 		seed = RandI64();
+		if (seed < 0)
+			seed = -seed;
 	}
 
 	vecu8_from_bmp(init_img_v, init_img);
