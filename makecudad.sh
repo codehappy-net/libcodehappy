@@ -44,10 +44,10 @@ g++ -g -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llamatok.cpp -o llam
 g++ -g -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llamagen.cpp -o llamagen.o
 g++ -g -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/chat.cpp -o chat.o
 g++ -g -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llamaembed.cpp -o llamaembed.o
-g++ -g -m64 llamatok.o bin/libcodehappycudadebug.a $CUDA_LIBRARIES -o  llamatok
-g++ -g -m64 llamagen.o bin/libcodehappycudadebug.a $CUDA_LIBRARIES -o  llamagen
-g++ -g -m64 chat.o bin/libcodehappycudadebug.a $CUDA_LIBRARIES -o  chat
-g++ -g -m64 llamaembed.o bin/libcodehappycudadebug.a $CUDA_LIBRARIES -o llamaembed
+g++ -g -m64 llamatok.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o  llamatok
+g++ -g -m64 llamagen.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o  llamagen
+g++ -g -m64 chat.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o  chat
+g++ -g -m64 llamaembed.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o llamaembed
 
 echo "*** Cleanup"
 rm *.o

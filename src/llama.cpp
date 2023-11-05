@@ -190,6 +190,8 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 		isn_type = ISN_PYGMALION;
 	if (!__stristr(model_path, "codellama"))
 		isn_type = ISN_CODELLAMA;
+	if (!__stristr(model_path, "hermes"))
+		isn_type = ISN_CHATML;
 
 	params.n_threads = std::max((int) std::thread::hardware_concurrency() / 2, 1);
 
@@ -226,6 +228,8 @@ static std::string isn_rubric_opening(InstructionType isn_type) {
 		return "<|system|>";
 	case ISN_CODELLAMA:
 		return "[INST] Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```:\n";
+	case ISN_CHATML:
+		return "<|im_start|>system\n";
 	}
 	return "### Instruction: ";
 }
@@ -244,6 +248,8 @@ static std::string isn_rubric_closing(InstructionType isn_type, bool trail_space
 		return "<|model|>";
 	case ISN_CODELLAMA:
 		return "[/INST]";
+	case ISN_CHATML:
+		return "<|im_end|>";
 	}
 	return "\n\n### Response:";
 }
@@ -255,17 +261,9 @@ void Llama::ensure_model_loaded() {
 			__ggml_be_init = true;
 		}
 		std::tie(model, ctx) = llama_init_from_gpt_params(params);
-		//assert(params.n_ctx <= llama_n_ctx_train(ctx));
 		if (params.n_ctx != llama_n_ctx_train(model)) {
 			codehappy_cerr << "*** Warning: model was trained on context size " << llama_n_ctx_train(model) << "; context size parameter is " << params.n_ctx << "\n";
 		}
-		// model warm-up
-		// (NOTE: insert_bos takes care of this, surely?)
-		//{
-		//const std::vector<llama_token> tmp = { llama_token_bos(ctx), };
-		//llama_eval(ctx, tmp.data(), tmp.size(), 0, params.n_threads);
-		//llama_reset_timings(ctx);
-		//}
 		last_n_tokens.resize(params.n_ctx, 0);
 	}
 	if (nullptr == ctx_cfg && params.sparams.cfg_scale != 1.f) {
@@ -276,10 +274,6 @@ void Llama::ensure_model_loaded() {
 
 void Llama::reset_contexts() {
 	struct llama_context_params lparams = llama_context_params_from_gpt_params(params);
-	if (ctx != nullptr)
-		llama_free(ctx);
-	if (ctx_cfg != nullptr)
-		llama_free(ctx_cfg);
 	ctx = llama_new_context_with_model(model, lparams);
 	if (params.sparams.cfg_scale != 1.f) {
 		ctx_cfg = llama_new_context_with_model(model, lparams);
