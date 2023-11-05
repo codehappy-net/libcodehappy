@@ -249,7 +249,7 @@ static std::string isn_rubric_closing(InstructionType isn_type, bool trail_space
 	case ISN_CODELLAMA:
 		return "[/INST]";
 	case ISN_CHATML:
-		return "<|im_end|>";
+		return "<|im_end|>\n<|im_start|>assistant\n";
 	}
 	return "\n\n### Response:";
 }
