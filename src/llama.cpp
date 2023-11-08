@@ -167,7 +167,7 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	/* Llama-70B is partially loaded, 40 layers, to GPU by default. */
 	if (__stristr(model_path, "70b") != nullptr)
 		is_70b = true;
-	params.n_gpu_layers = (is_70b ? 40 : 43);
+	params.n_gpu_layers = (is_70b ? 36 : 39);
 
 	/* If using 8 bit quantization, adjust the default number of layers accordingly. */
 	if (is_70b && __stristr(model_path, "q8") != nullptr)
