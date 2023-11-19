@@ -78,8 +78,8 @@ int app_main() {
 	bool spoiler = false;
 
 	llama_args(ap);
-	ap.ensure_args(argc, argv);
 	ap.add_argument("spoiler", type_none, "reveal the magic word at the start of the game (for debugging)", &spoiler);
+	ap.ensure_args(argc, argv);
 	Llama llama(ap);
 
 	std::string prompt, magic_word;
