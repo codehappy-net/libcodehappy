@@ -91,6 +91,7 @@ enum InstructionType {
 	ISN_PYGMALION,	// <|system|> and <|model|>
 	ISN_CODELLAMA,	// [INST]
 	ISN_CHATML,	// <|im_start|> and <|im_end|>
+	ISN_VICUNA,	// USER: and ASSISTANT:
 };
 
 typedef void (*LlamaCallback)(const char *);

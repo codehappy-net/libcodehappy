@@ -146,6 +146,9 @@ Llama::Llama(const ArgParse& ap, const LlamaDefaults& defaults) {
 }
 
 void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_70b) {
+	int bparam = 0;
+	int quant = 8;
+	int layers4;
 	log_disable();
 	model = nullptr;
 	ctx = nullptr;
@@ -160,22 +163,64 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	params.n_batch = 1024;
 	params.embedding = false;
 
-	/*** Determining the default number of model layers to put on GPU. These values were selected for a 24GB VRAM card,
+	/*** Determining the default number of model layers to put on GPU. These values were selected for one 24GB VRAM card,
 	     and will need to be scaled for a different card. These values can be changed by calling layers_to_gpu(),
 	     run_cpu_only(), or load_fully_on_gpu() before loading the model. ***/
+	const char* paramstrs[] = { "180b", "175b", "120b", "80b", "70b", "65b", "40b", "34b", "33b", "30b", "20b", "15b", "13b", "11b", "7b", "3b" };
+	const char* quantstr[] = { "q8", "q6", "q5", "q4", "q3", "q2" };
 
-	/* Llama-70B is partially loaded, 40 layers, to GPU by default. */
-	if (__stristr(model_path, "70b") != nullptr)
-		is_70b = true;
-	params.n_gpu_layers = (is_70b ? 36 : 39);
+	if (is_70b)
+		bparam = 70;
+	for (auto ps : paramstrs) {
+		if (__stristr(model_path, ps) != nullptr) {
+			bparam = atoi(ps);
+			break;
+		}
+	}
+	for (auto qs : quantstr) {
+		if (__stristr(model_path, qs) != nullptr) {
+			quant = atoi(qs + 1);
+			break;
+		}
+	}
 
-	/* If using 8 bit quantization, adjust the default number of layers accordingly. */
-	if (is_70b && __stristr(model_path, "q8") != nullptr)
-		params.n_gpu_layers = 22;
+	switch (bparam) {
+	case 180:
+	case 175:
+		layers4 = 13;
+		break;
+	case 120:
+		layers4 = 44;
+		break;
+	case 80:
+		layers4 = 28;
+		break;
+	case 70:
+	case 65:
+	case 40:
+		layers4 = 44;
+		break;
+	case 34:
+	case 33:
+	case 30:
+		layers4 = 68;
+		break;
+	case 20:
+	case 15:
+	case 13:
+	case 11:
+		layers4 = 140;
+		break;
+	case 7:
+		layers4 = 200;
+		break;
+	case 3:
+	default:
+		layers4 = 300;
+		break;
+	}
 
-	/* 13 layers of 4bit-K-M Falcon-180B fits into VRAM (including context). */
-	if (__stristr(model_path, "180b") != nullptr)
-		params.n_gpu_layers = 13;
+	params.n_gpu_layers = (layers4 * 4) / quant;
 
 	if (vram_gb >= 0 && vram_gb != 24) {
 		params.n_gpu_layers *= vram_gb;
@@ -192,6 +237,10 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 		isn_type = ISN_CODELLAMA;
 	if (!__stristr(model_path, "hermes"))
 		isn_type = ISN_CHATML;
+	if (!__stristr(model_path, "capyb"))
+		isn_type = ISN_VICUNA;
+	if (!__stristr(model_path, "vicuna"))
+		isn_type = ISN_VICUNA;
 
 	params.n_threads = std::max((int) std::thread::hardware_concurrency() / 2, 1);
 
@@ -230,6 +279,8 @@ static std::string isn_rubric_opening(InstructionType isn_type) {
 		return "[INST] Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```:\n";
 	case ISN_CHATML:
 		return "<|im_start|>system\n";
+	case ISN_VICUNA:
+		return "USER: ";
 	}
 	return "### Instruction: ";
 }
@@ -250,6 +301,8 @@ static std::string isn_rubric_closing(InstructionType isn_type, bool trail_space
 		return "[/INST]";
 	case ISN_CHATML:
 		return "<|im_end|>\n<|im_start|>assistant\n";
+	case ISN_VICUNA:
+		return "\nASSISTANT: ";
 	}
 	return "\n\n### Response:";
 }
