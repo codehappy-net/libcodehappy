@@ -206,6 +206,8 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 		layers4 = 68;
 		break;
 	case 20:
+		layers4 = 100;
+		break;
 	case 15:
 	case 13:
 	case 11:
@@ -241,6 +243,8 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 		isn_type = ISN_VICUNA;
 	if (!__stristr(model_path, "vicuna"))
 		isn_type = ISN_VICUNA;
+	if (!__stristr(model_path, "monadgpt"))
+		isn_type = ISN_MONADGPT;
 
 	params.n_threads = std::max((int) std::thread::hardware_concurrency() / 2, 1);
 
@@ -281,6 +285,8 @@ static std::string isn_rubric_opening(InstructionType isn_type) {
 		return "<|im_start|>system\n";
 	case ISN_VICUNA:
 		return "USER: ";
+	case ISN_MONADGPT:
+		return "<|im_start|>system\nYou are MonadGPT, a very old chatbot from the 17th century. Please answer the questions using an archaic language\n<|im_end|>\n<|im_start|>user\n";
 	}
 	return "### Instruction: ";
 }
@@ -300,9 +306,11 @@ static std::string isn_rubric_closing(InstructionType isn_type, bool trail_space
 	case ISN_CODELLAMA:
 		return "[/INST]";
 	case ISN_CHATML:
+	case ISN_MONADGPT:
 		return "<|im_end|>\n<|im_start|>assistant\n";
 	case ISN_VICUNA:
 		return "\nASSISTANT: ";
+
 	}
 	return "\n\n### Response:";
 }

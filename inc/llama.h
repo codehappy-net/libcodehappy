@@ -92,6 +92,7 @@ enum InstructionType {
 	ISN_CODELLAMA,	// [INST]
 	ISN_CHATML,	// <|im_start|> and <|im_end|>
 	ISN_VICUNA,	// USER: and ASSISTANT:
+	ISN_MONADGPT,	// use the MonadGPT system prompt
 };
 
 typedef void (*LlamaCallback)(const char *);
