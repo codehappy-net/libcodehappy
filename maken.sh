@@ -21,12 +21,14 @@ g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/sampling.cpp -o sampl
 g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/train.cpp -o train.o
 
 echo "*** Build embedded fonts/patches."
+embed_built=0
 if [ -f "bin/embed.o" ]; then
 echo "(Using cached version from previous build.)"
 cp bin/embed.o .
 else
 g++ -std=c++11 -O3 -flto -fuse-linker-plugin -m64 -c -Iinc -DCODEHAPPY_NATIVE -DALL_FONTS src/embed.cpp -o embed.o
 cp embed.o bin
+embed_built=1
 fi
 
 echo "*** Build the C++ library (nice single file build)"
@@ -56,6 +58,7 @@ g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/wikimedia.cpp -o wikime
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/quant.cpp -o quant.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/newspapers.cpp -o newspapers.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/sd.cpp -o sd.o
+g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/ttfembed.cpp -o ttfembed.o
 g++ -O3 -flto -fuse-linker-plugin -m64 compress.o bin/libcodehappy.a -lpthread -o compress
 g++ -O3 -flto -fuse-linker-plugin -m64 testfont.o bin/libcodehappy.a -lpthread -o testfont
 g++ -O3 -flto -fuse-linker-plugin -m64 colors.o bin/libcodehappy.a -lpthread -o colors
@@ -76,5 +79,10 @@ g++ -O3 -flto -fuse-linker-plugin -m64 wikimedia.o bin/libcodehappy.a -lpthread 
 g++ -O3 -flto -fuse-linker-plugin -m64 quant.o bin/libcodehappy.a -lpthread -o quant
 g++ -O3 -flto -fuse-linker-plugin -m64 newspapers.o bin/libcodehappy.a -lpthread -o newspapers
 g++ -O3 -flto -fuse-linker-plugin -m64 sd.o bin/libcodehappy.a -lpthread -o sd-cpu
+g++ -O3 -flto -fuse-linker-plugin -m64 ttfembed.o bin/libcodehappy.a -lpthread -o ttfembed
+if [ $embed_built -eq 1 ]; then
+g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc -DCODEHAPPY_NATIVE examples/fontsample.cpp -o fontsample.o
+g++ -O3 -flto -fuse-linker-plugin -m64 fontsample.o bin/libcodehappy.a -lpthread -o fontsample
+fi
 echo "*** Cleanup"
 rm *.o

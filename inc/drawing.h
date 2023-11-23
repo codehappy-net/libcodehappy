@@ -640,6 +640,8 @@ public:
 private:
 	ttfont* font;
 	bool	builtin;
+
+	friend ttfont* ttf_from_font(const Font* font_in);
 };
 
 /*** Helper: verify that this is a valid pixel for this bitmap. ***/
@@ -760,6 +762,8 @@ extern bool point_in_polygon(const SPoint& p, SPoint* poly, u32 npoints, SBitmap
 extern RGBColor to_gray_luma_transform(RGBColor c);
 /* Free static memory allocated by the library for performance/caching reasons. */
 extern void libcodehappy_free_caches();
+extern ttfont* ttf_from_font(const Font* font_in);
+
 
 extern RGB565 RGB565FromRGBColor(RGBColor c);
 extern RGBColor RGBColorFromRGB565(RGB565 c);

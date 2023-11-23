@@ -260,11 +260,39 @@ extern ttfont font_3D_gold_rush;
 /*** 3-D Hotdog is a loopy, curved, outline & shadows typeface. ***/
 extern ttfont font_3D_hotdog;
 
-/***************************************************************************************************/
-/***************************************************************************************************/
-/***************************************************************************************************/
-#if 0
+/*** FHWA series (Highway Gothic) in varying widths. ***/
+extern ttfont font_fhwa_series_b;
+extern ttfont font_fhwa_series_c;
+extern ttfont font_fhwa_series_d;
+extern ttfont font_fhwa_series_e;
+extern ttfont font_fhwa_series_f;
+
+/*** Albatross -- a thin serif font ***/
+extern ttfont font_albatross;
+
+/*** Automania -- a curved outline font ***/
+extern ttfont font_automania;
+
+/*** Back to 1982 -- an outline pixel bitfont ***/
+extern ttfont font_backto1982;
+
+/*** Caesar -- an outline caps font reminiscent of engraved Roman monumental letters ***/
+extern ttfont font_caesar;
+
+/*** Cairo -- traditional block font ***/
+extern ttfont font_cairo;
+
+/*** A couple infamous well-known fonts: Papyrus, Comic Sans MS ***/
+extern ttfont font_papyrus;
+extern ttfont font_comic_sans_ms;
+extern ttfont font_comic_sans_ms_bold_italic;
+extern ttfont font_comic_sans_ms_italic;
+
+/*** Eurostile: a thin science-fictiony font ***/
+extern ttfont font_eurostile;
+
 // TODO: write brief descriptions of the following typefaces
+extern ttfont font_abduction;
 extern ttfont font_african;
 extern ttfont font_aftershock;
 extern ttfont font_agate;
@@ -273,135 +301,12 @@ extern ttfont font_amelia;
 extern ttfont font_annfold;
 extern ttfont font_atlas;
 extern ttfont font_aunt_judy;
-extern ttfont font_abduction;
-extern ttfont font_aegyptus;
 extern ttfont font_american_uncial;
 extern ttfont font_bellbottom;
-extern ttfont font_3D_bowers_shadow;
 
-/********************************************************************************/
-/*** D I N G B A T  F O N T S ***/
-/* The fonts below are full of dingbats, clip art, and icons, and might be useful in applications. */
-/* Use the tool "fontdump" to view all the glyphs rendered in a .PNG file. */
-/********************************************************************************/
-
-// TODO: short descriptions for these fonts
-extern ttfont font_banch_thin;
-
-/*** A dingbat font containing many excellent art deco-style corners, borders, etc. ***/
-extern ttfont font_deco_borders;
-
-/*** Two dingbat fonts containing many snowflakes. Great for sprites for snowy backgrounds, etc. ***/
-/*** See "testui.c" for an example application using glyphs from these fonts as sprite animations. ***/
-extern ttfont font_snowflakes;
-extern ttfont font_snowflakes2;
-
-/*** Two dingbat fonts containing cars of the 1970s. Could be used for sprite art. ***/
-extern ttfont font_oil_crisis_a;
-extern ttfont font_oil_crisis_b;
-
-/*** A chess font, featuring chess pieces and chessboard squares. ***/
-extern ttfont font_chess;
-
-/*** Deco Dingbats contains some stylish art deco art. ***/
-extern ttfont font_deco_dingbats;
-
-/*** Ornate frames and borders. ***/
-extern ttfont font_frames_and_borders;
-
-/*** Garage Sale is a font containing pictures of many household items. ***/
-extern ttfont font_garage_sale;
-
-/*** Siruca Pictograms is a neat icon/dingbat stencil font that features people, signs, etc. ***/
-extern ttfont font_siruca_pictograms;
-
-/*** Kalocsai Flowers features many different flower icons. ***/
-extern ttfont font_kalocsai_flowers;
-
-/*** HeyDings Controls and HeyDings Common Icons have many excellent icons for buttons, taskbars, menu options, etc. ***/
-extern ttfont font_heydings_controls;
-extern ttfont font_heydings_icons;
-
-/*** Entypo by Daniel Bruce contains many useful and stylish icons and pictograms. Licensed under CC-3 (attribution), so
-	be sure to credit him if this font is used. ***/
-extern ttfont font_entypo;
-
-/*** Davys Dingbats is a dingbat font comprised of old, classic public domain clip art. ***/
-extern ttfont font_davys;
-
-/*** Modern Pictograms includes many useful icons. ***/
-extern ttfont font_modern_pictograms;
-
-/*** Notice is a signs font, with many glyphs potentially useful in applications. ***/
-extern ttfont font_notice_1;
-extern ttfont font_notice_2;
-extern ttfont font_notice_3;
-
-/*** Outgunned is, as you can imagine, a dingbat font full of guns, ammunition, grenades, and other munitions. Potentially
-	useful for sprites. ***/
-extern ttfont font_outgunned;
-
-/*** Symbol Signs is another useful dingbat signs font. ***/
-extern ttfont font_symbol_signs;
-
-/*** State Face contains glyphs in the shapes of the states of the U.S.A. ***/
-extern ttfont font_state_face;
-
-/*** WebHostingHub Glyphs contains a ton of useful computery icons. ***/
-extern ttfont font_webhostinghub_glyphs;
-
-/*** More useful web icons. ***/
-extern ttfont font_web_symbols;
-
-/*** A nice collection of arrows in various styles ***/
-extern ttfont font_arrows;
-extern ttfont font_arrows_tfb;
-extern ttfont font_simple_direction_arrows;
-
-/*** Brackets ***/
-extern ttfont font_bella_k_brackets;
-
-/*** Two bullet/button fonts in similar style ***/
-extern ttfont font_button_button;
-extern ttfont font_bullet_balls;
-
-/*** Circular buttons/bullets with various patterns ***/
-extern ttfont font_circle_things;
-
-/*** A variety of dingbats ***/
-extern ttfont font_distro_bats;
-
-/*** Cutout shapes ***/
-extern ttfont font_cutouts_for_3d_fx;
-
-/*** Arrows evoking a hand-drawn style ***/
-extern ttfont font_peax_webdesign_arrows;
-
-/*** Stylized arrow icons ***/
-extern ttfont font_pointers;
-
-/*** Attractive star dingbat fonts ***/
-extern ttfont font_estrellas;
-extern ttfont font_seeing_stars;
-
-/*** Two word balloon (ala comic strips) fonts ***/
-extern ttfont font_komika_bubbles;
-extern ttfont font_talk;
-
-/*** Outlined shapes, for flowcharts, presentations, etc. ***/
-extern ttfont font_vari_shapes;
-
-/*** Some really slick dithered patterns ***/
-extern ttfont font_serangkaian_pattern;
-
-/*** Nice icon font ***/
-extern ttfont font_breezi_icon_font;
-
-/*** Buttons and switches (play, record, eject, etc.) ***/
-extern ttfont font_buttons_and_switches;
-extern ttfont font_ll_record;
-
-#endif
+/***************************************************************************************************/
+/***************************************************************************************************/
+/***************************************************************************************************/
 /***************************************************************************************************/
 /***************************************************************************************************/
 /***************************************************************************************************/

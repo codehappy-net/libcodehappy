@@ -5743,4 +5743,9 @@ RGBColor complementary_color(RGBColor c) {
 	return RGBA_NO_CHECK(r, g, b, a);
 }
 
+ttfont* ttf_from_font(const Font* font_in) {
+	NOT_NULL_OR_RETURN(font_in, nullptr);
+	return font_in -> font;
+}
+
 /*** end drawing.cpp ***/
