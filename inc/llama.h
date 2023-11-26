@@ -86,13 +86,19 @@ struct ChatEntry {
 
 /* Different types of instruction rubrics that might be used by instruction-tuned models. */
 enum InstructionType {
-	ISN_ALPACA,	// ### Instruction: and ### Response:
-	ISN_MISTRAL,	// <s>[INST] and [/INST]
-	ISN_PYGMALION,	// <|system|> and <|model|>
-	ISN_CODELLAMA,	// [INST]
-	ISN_CHATML,	// <|im_start|> and <|im_end|>
-	ISN_VICUNA,	// USER: and ASSISTANT:
-	ISN_MONADGPT,	// use the MonadGPT system prompt
+	ISN_CUSTOM = -1,	// Use the rubric prefix and suffix supplied by the user.
+	ISN_ALPACA = 0,	// ### Instruction: and ### Response:
+	ISN_ALPACA_SYS,	// Alpaca, but with the system message before ### Instruction:
+	ISN_MISTRAL,		// <s>[INST] and [/INST]
+	ISN_PYGMALION,		// <|system|> and <|model|>
+	ISN_CODELLAMA,		// [INST]
+	ISN_CHATML,		// <|im_start|> and <|im_end|>
+	ISN_VICUNA,		// USER: and ASSISTANT:
+	ISN_MONADGPT,		// use the MonadGPT system prompt
+	ISN_TULU,		// <|user|> and <|assistant|>
+	ISN_ORCA,		// SYSTEM:, USER:, and ASSISTANT:
+	ISN_LLAMA2CHAT,	// [INST], <<SYS>>, <</SYS>>, [/INST]
+	ISN_HUMAN_ASSISTANT,	// Human: and Assistant:
 };
 
 typedef void (*LlamaCallback)(const char *);
@@ -113,6 +119,7 @@ struct LlamaDefaults {
 	int layers_gpu;
 	int vram_gb;
 	bool og_llama;
+	int context_size;
 };
 
 extern LlamaDefaults llama_defaults;
@@ -225,6 +232,13 @@ public:
 	void disable_embeddings()		{ params.embedding = false; }
 	bool embeddings_enabled() const	{ return params.embedding; }
 
+	// Set a custom instruction rubric.
+	void set_custom_isn_rubric(const std::string& custom_isn_opening, const std::string& custom_isn_closing);
+
+	// Get the current instruction rubric strings.
+	std::string isn_rubric_opening() const;
+	std::string isn_rubric_closing(bool trail_space = false) const;
+
 	// Set various generation parameters.
 	void set_top_k(int top_k)		{ params.sparams.top_k = top_k; }
 	void set_top_p(float top_p)		{ params.sparams.top_p = top_p; }
@@ -335,6 +349,8 @@ private:
 	std::string grammar_s;
 	llama_grammar* grammar;
 	InstructionType isn_type;
+	std::string isn_opening;
+	std::string isn_closing;
 };
 
 extern bool ggml_backend_is_init();

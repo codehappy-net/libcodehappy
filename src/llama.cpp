@@ -140,6 +140,16 @@ Llama::Llama(const ArgParse& ap, const LlamaDefaults& defaults) {
 			codehappy_cerr << "invalid layer count: " << iv << "\n";
 	}
 
+	if (defaults.context_size > 0)
+		params.n_ctx = defaults.context_size;
+	if (ap.flag_present("llama-context")) {
+		iv = ap.value_int("llama-context");
+		if (iv > 0)
+			params.n_ctx = iv;
+		else
+			codehappy_cerr << "invalid context window size: " << iv << "\n";
+	}
+
 	if (ap.flag_present("cpuonly")) {
 		params.n_gpu_layers = 0;
 	}
@@ -230,7 +240,6 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	}
 
 	// attempt to guess the instruction rubric (if any) used by the model from the name.
-	isn_type = ISN_ALPACA;
 	if (!__stristr(model_path, "mistral"))
 		isn_type = ISN_MISTRAL;
 	if (!__stristr(model_path, "pygmalion"))
@@ -245,6 +254,10 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 		isn_type = ISN_VICUNA;
 	if (!__stristr(model_path, "monadgpt"))
 		isn_type = ISN_MONADGPT;
+	if (!__stristr(model_path, "tulu"))
+		isn_type = ISN_TULU;
+	if (!__stristr(model_path, "tess"))
+		isn_type = ISN_ORCA;
 
 	params.n_threads = std::max((int) std::thread::hardware_concurrency() / 2, 1);
 
@@ -270,11 +283,15 @@ void free_llama_backend() {
 	}
 }
 
-static std::string isn_rubric_opening(InstructionType isn_type) {
+std::string Llama::isn_rubric_opening() const {
 	switch (isn_type) {
 	default:
 	case ISN_ALPACA:
 		break;
+	case ISN_CUSTOM:
+		return isn_opening;
+	case ISN_ALPACA_SYS:
+		return "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction: ";
 	case ISN_MISTRAL:
 		return "<s>[INST]";
 	case ISN_PYGMALION:
@@ -287,32 +304,57 @@ static std::string isn_rubric_opening(InstructionType isn_type) {
 		return "USER: ";
 	case ISN_MONADGPT:
 		return "<|im_start|>system\nYou are MonadGPT, a very old chatbot from the 17th century. Please answer the questions using an archaic language\n<|im_end|>\n<|im_start|>user\n";
+	case ISN_TULU:
+		return "<|user|>\n";
+	case ISN_ORCA:
+		return "SYSTEM: Follow the user instructions faithfully and helpfully to the best of your ability.\nUSER: ";
+	case ISN_LLAMA2CHAT:
+		return "[INST] <<SYS>>\nFollow instructions faithfully and helpfully to the best of your ability.\n<</SYS>>\n";
+	case ISN_HUMAN_ASSISTANT:
+		return "Human: ";
 	}
 	return "### Instruction: ";
 }
 
-static std::string isn_rubric_closing(InstructionType isn_type, bool trail_space) {
+std::string Llama::isn_rubric_closing(bool trail_space) const {
 	switch (isn_type) {
 	default:
 	case ISN_ALPACA:
+	case ISN_ALPACA_SYS:
 		// add a trailing space if we're beginning the response ourselves.
 		if (trail_space)
 			return "\n\n### Response: ";
 		break;
+	case ISN_CUSTOM:
+		return isn_closing;
 	case ISN_MISTRAL:
+	case ISN_CODELLAMA:
+	case ISN_LLAMA2CHAT:
 		return "[/INST]";
 	case ISN_PYGMALION:
 		return "<|model|>";
-	case ISN_CODELLAMA:
-		return "[/INST]";
 	case ISN_CHATML:
 	case ISN_MONADGPT:
 		return "<|im_end|>\n<|im_start|>assistant\n";
 	case ISN_VICUNA:
-		return "\nASSISTANT: ";
-
+	case ISN_ORCA:
+		if (trail_space)
+			return "\nASSISTANT: ";
+		return "\nASSISTANT:";
+	case ISN_TULU:
+		return "\n<|assistant|>";
+	case ISN_HUMAN_ASSISTANT:
+		if (trail_space)
+			return "\nAssistant: ";
+		return "\nAssistant:";
 	}
 	return "\n\n### Response:";
+}
+
+void Llama::set_custom_isn_rubric(const std::string& custom_isn_opening, const std::string& custom_isn_closing) {
+	isn_opening = custom_isn_opening;
+	isn_closing = custom_isn_closing;
+	isn_type = ISN_CUSTOM;
 }
 
 void Llama::ensure_model_loaded() {
@@ -504,10 +546,10 @@ void Llama::session_prompt(const char* str) {
 }
 
 void Llama::isn_prompt(const std::string& str) {
-	std::string isn = isn_rubric_opening(isn_type);
+	std::string isn = isn_rubric_opening();
 	std::string str_trunc = truncate_nicely_by_tokens(str, params.n_ctx - 100);
 	isn += str_trunc;
-	isn += isn_rubric_closing(isn_type, false);
+	isn += isn_rubric_closing(false);
 	session_prompt(isn);
 	keep_tok = session_tok.size();
 }
@@ -519,10 +561,10 @@ void Llama::isn_prompt(const char* str) {
 
 void Llama::isn_prompt(const std::string& str, const std::string& response_begin) {
 	u32 ct = token_count(response_begin);
-	std::string isn = isn_rubric_opening(isn_type);
+	std::string isn = isn_rubric_opening();
 	std::string str_trunc = truncate_nicely_by_tokens(str, params.n_ctx - 100 - ct);
 	isn += str_trunc;
-	isn += isn_rubric_closing(isn_type, true);
+	isn += isn_rubric_closing(true);
 	isn += response_begin;
 	session_prompt(isn);
 	keep_tok = session_tok.size();
@@ -758,7 +800,7 @@ void Llama::chat_session(const std::string& char_card, const std::string& bn, co
 	user_name = un;
 	if (!bot_greeting.empty())
 		greet_size = token_count(bot_greeting);
-	chat_isn = isn_rubric_opening(isn_type);
+	chat_isn = isn_rubric_opening();
 	chat_isn += " A chat between ";
 	chat_isn += bot_name;
 	chat_isn += " and ";
@@ -776,7 +818,7 @@ void Llama::chat_session(const std::string& char_card, const std::string& bn, co
 	chat_isn += ": Good morning, how are you doing?\n\n";
 	std::string char_card_trunc = truncate_nicely_by_tokens(char_card, params.n_ctx - token_count(chat_isn) - greet_size - 100);
 	chat_isn += char_card_trunc;
-	chat_isn += isn_rubric_closing(isn_type, false);
+	chat_isn += isn_rubric_closing(false);
 	chat_isn += "\n";
 	keep_tok = token_count(chat_isn);
 	chats.clear();
@@ -1265,6 +1307,7 @@ LlamaDefaults::LlamaDefaults() {
 	layers_gpu = -1;
 	vram_gb = 24;
 	og_llama = false;
+	context_size = -1;
 };
 
 LlamaDefaults llama_defaults;
@@ -1283,6 +1326,7 @@ void llama_args(ArgParse& ap) {
 	ap.add_argument("cpuonly", type_none, "run large language model inference CPU only");
 	ap.add_argument("llama-layers", type_int, "number of Llama layers to load onto GPU for inference");
 	ap.add_argument("llama-vram", type_int, "use this many GB of VRAM to determine default number of layers loaded to gpu");
+	ap.add_argument("llama-context", type_int, "the number of tokens in the context window for this model");
 }
 
 /* helper functions */
