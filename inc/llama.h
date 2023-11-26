@@ -88,8 +88,8 @@ struct ChatEntry {
 enum InstructionType {
 	ISN_CUSTOM = -1,	// Use the rubric prefix and suffix supplied by the user.
 	ISN_ALPACA = 0,	// ### Instruction: and ### Response:
-	ISN_ALPACA_SYS,	// Alpaca, but with the system message before ### Instruction:
-	ISN_MISTRAL,		// <s>[INST] and [/INST]
+	ISN_ALPACA_SYS,	// Alpaca, but with the default system message before ### Instruction:
+	ISN_MISTRAL,		// Mistral-Instruct: <s>[INST] and [/INST]
 	ISN_PYGMALION,		// <|system|> and <|model|>
 	ISN_CODELLAMA,		// [INST]
 	ISN_CHATML,		// <|im_start|> and <|im_end|>
@@ -235,9 +235,16 @@ public:
 	// Set a custom instruction rubric.
 	void set_custom_isn_rubric(const std::string& custom_isn_opening, const std::string& custom_isn_closing);
 
+	// Set a custom system prompt -- only used for InstructionTypes that use system prompts.
+	void set_system_prompt(const std::string& p)	{ isn_system = p; }
+
+	// Does the current isn rubric use system prompts?
+	bool uses_system_prompt() const;
+
 	// Get the current instruction rubric strings.
 	std::string isn_rubric_opening() const;
 	std::string isn_rubric_closing(bool trail_space = false) const;
+	std::string isn_system_prompt() const;
 
 	// Set various generation parameters.
 	void set_top_k(int top_k)		{ params.sparams.top_k = top_k; }
@@ -351,6 +358,7 @@ private:
 	InstructionType isn_type;
 	std::string isn_opening;
 	std::string isn_closing;
+	std::string isn_system;
 };
 
 extern bool ggml_backend_is_init();

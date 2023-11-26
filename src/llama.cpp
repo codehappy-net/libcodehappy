@@ -284,32 +284,73 @@ void free_llama_backend() {
 }
 
 std::string Llama::isn_rubric_opening() const {
+	std::string sys_prompt = isn_system_prompt();
+	std::string ret;
+
 	switch (isn_type) {
 	default:
 	case ISN_ALPACA:
+		if (!sys_prompt.empty()) {
+			sys_prompt += "\n### Instruction: ";
+			return sys_prompt;
+		}
 		break;
+
 	case ISN_CUSTOM:
-		return isn_opening;
+		if (sys_prompt.empty()) {
+			return isn_opening;
+		}
+		sys_prompt += "\n";
+		sys_prompt += isn_opening;
+		return sys_prompt;
+
 	case ISN_ALPACA_SYS:
-		return "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction: ";
+		if (sys_prompt.empty())
+			return "### Instruction: ";
+		sys_prompt += "\n### Instruction: ";
+		return sys_prompt;
+
 	case ISN_MISTRAL:
 		return "<s>[INST]";
+
 	case ISN_PYGMALION:
 		return "<|system|>";
+
 	case ISN_CODELLAMA:
-		return "[INST] Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```:\n";
+		ret = "[INST] ";
+		ret += sys_prompt;
+		ret += "\n";
+		return ret;
+
 	case ISN_CHATML:
-		return "<|im_start|>system\n";
-	case ISN_VICUNA:
-		return "USER: ";
 	case ISN_MONADGPT:
-		return "<|im_start|>system\nYou are MonadGPT, a very old chatbot from the 17th century. Please answer the questions using an archaic language\n<|im_end|>\n<|im_start|>user\n";
+		if (sys_prompt.empty()) {
+			return "<|im_start|>system\n";
+		}
+		ret = "<|im_start|>system\n";
+		ret += sys_prompt;
+		ret += "<|im_end|>\n<|im_start|>user\n";
+		return ret;
+
+	case ISN_VICUNA:
+	case ISN_ORCA:
+		if (sys_prompt.empty()) {
+			return "USER: ";
+		}
+		ret = "SYSTEM: ";
+		ret += sys_prompt;
+		ret += "\nUSER: ";
+		return ret;
+
 	case ISN_TULU:
 		return "<|user|>\n";
-	case ISN_ORCA:
-		return "SYSTEM: Follow the user instructions faithfully and helpfully to the best of your ability.\nUSER: ";
+
 	case ISN_LLAMA2CHAT:
-		return "[INST] <<SYS>>\nFollow instructions faithfully and helpfully to the best of your ability.\n<</SYS>>\n";
+		ret = "[INST] <<SYS>>\n";
+		ret += sys_prompt;
+		ret += "\n<</SYS>>\n";
+		return ret;
+
 	case ISN_HUMAN_ASSISTANT:
 		return "Human: ";
 	}
@@ -355,6 +396,64 @@ void Llama::set_custom_isn_rubric(const std::string& custom_isn_opening, const s
 	isn_opening = custom_isn_opening;
 	isn_closing = custom_isn_closing;
 	isn_type = ISN_CUSTOM;
+}
+
+bool Llama::uses_system_prompt() const {
+	switch (isn_type) {
+	case ISN_ALPACA:
+	case ISN_ALPACA_SYS:
+	case ISN_CHATML:
+	case ISN_CODELLAMA:
+	case ISN_LLAMA2CHAT:
+	case ISN_VICUNA:
+	case ISN_ORCA:
+	case ISN_MONADGPT:
+		return true;
+
+	case ISN_CUSTOM:
+		// permit using system prompts with custom rubrics -- they're prepended to the instruction, along with a newline.
+		return true;
+	}
+
+	// Pygmalion rubric has something called a 'system' prompt but doesn't distinguish between it and a user prompt,
+	// so for our purposes they don't support a separate system message.
+	return false;
+}
+
+std::string Llama::isn_system_prompt() const {
+	if (!uses_system_prompt())
+		return "";
+
+	// User-supplied system prompt always takes precedence.
+	if (!isn_system.empty())
+		return isn_system;
+
+	// Default system prompts, for the instruction rubrics that accept them.
+	switch (isn_type) {
+	case ISN_ALPACA_SYS:
+		break;
+	case ISN_ALPACA:
+	case ISN_CHATML:
+	case ISN_VICUNA:
+	case ISN_CUSTOM:
+		// These *can* use a system message, but none is supplied by default.
+		return "";
+	case ISN_CODELLAMA:
+		// default CodeLlama instruction.
+		return "Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```:";
+	case ISN_LLAMA2CHAT:
+		// a more appropriate Llama 2 chat system prompt.
+		return "Follow instructions faithfully and helpfully to the best of your ability.";
+	case ISN_MONADGPT:
+		// this is the system message it was trained with, so this is what you want to use in most applications.
+		return "You are MonadGPT, a very old chatbot from the 17th century. Please answer the questions using an archaic language";
+
+	case ISN_ORCA:
+		return "Follow the user instructions faithfully and helpfully to the best of your ability.";
+	}
+
+	// This is the Alpaca default system prompt, it's also a fairly safe default since lots of people train on Alpaca examples.
+	return "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n";
 }
 
 void Llama::ensure_model_loaded() {
