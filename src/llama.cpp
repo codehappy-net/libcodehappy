@@ -383,7 +383,7 @@ std::string Llama::isn_rubric_closing(bool trail_space) const {
 			return "\nASSISTANT: ";
 		return "\nASSISTANT:";
 	case ISN_TULU:
-		return "\n<|assistant|>";
+		return "\n<|assistant|>\n";
 	case ISN_HUMAN_ASSISTANT:
 		if (trail_space)
 			return "\nAssistant: ";
