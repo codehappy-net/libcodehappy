@@ -99,6 +99,9 @@ enum InstructionType {
 	ISN_ORCA,		// SYSTEM:, USER:, and ASSISTANT:
 	ISN_LLAMA2CHAT,	// [INST], <<SYS>>, <</SYS>>, [/INST]
 	ISN_HUMAN_ASSISTANT,	// Human: and Assistant:
+
+	/* this should always be the last enum: indicates the number of rubrics */
+	ISN_MAX,
 };
 
 typedef void (*LlamaCallback)(const char *);

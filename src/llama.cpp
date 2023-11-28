@@ -150,6 +150,18 @@ Llama::Llama(const ArgParse& ap, const LlamaDefaults& defaults) {
 			codehappy_cerr << "invalid context window size: " << iv << "\n";
 	}
 
+	if (ap.flag_present("llama-rubric")) {
+		iv = ap.value_int("llama-rubric");
+		if (iv < 0 || iv >= (int) ISN_MAX)
+			codehappy_cerr << "invalid rubric index: " << iv << " (maximum permissable is " << ((int)ISN_MAX) - 1 << ")\n";
+		else
+			isn_type = (InstructionType) iv;
+	}
+
+	if (ap.flag_present("llama-system")) {
+		ap.value_str("llama-system", isn_system);
+	}
+
 	if (ap.flag_present("cpuonly")) {
 		params.n_gpu_layers = 0;
 	}
@@ -1426,6 +1438,8 @@ void llama_args(ArgParse& ap) {
 	ap.add_argument("llama-layers", type_int, "number of Llama layers to load onto GPU for inference");
 	ap.add_argument("llama-vram", type_int, "use this many GB of VRAM to determine default number of layers loaded to gpu");
 	ap.add_argument("llama-context", type_int, "the number of tokens in the context window for this model");
+	ap.add_argument("llama-rubric", type_int, "identifier for the rubric used by the model (Alpaca=0)");
+	ap.add_argument("llama-system", type_string, "specify a custom system prompt (for rubrics that use system prompts)");
 }
 
 /* helper functions */
