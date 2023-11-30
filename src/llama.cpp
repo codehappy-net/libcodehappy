@@ -270,6 +270,15 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 		isn_type = ISN_TULU;
 	if (!__stristr(model_path, "tess"))
 		isn_type = ISN_ORCA;
+	if (!__stristr(model_path, "deepseek")) {
+		if (!__stristr(model_path, "coder")) {
+			// DeepSeek Coder-Instruct
+			isn_type = ISN_DEEPSEEK_CODER;
+		} else {
+			// DeepSeek chat
+			isn_type = ISN_USER_ASSISTANT;
+		}
+	}
 
 	params.n_threads = std::max((int) std::thread::hardware_concurrency() / 2, 1);
 
@@ -317,6 +326,7 @@ std::string Llama::isn_rubric_opening() const {
 		return sys_prompt;
 
 	case ISN_ALPACA_SYS:
+	case ISN_DEEPSEEK_CODER:
 		if (sys_prompt.empty())
 			return "### Instruction: ";
 		sys_prompt += "\n### Instruction: ";
@@ -365,6 +375,9 @@ std::string Llama::isn_rubric_opening() const {
 
 	case ISN_HUMAN_ASSISTANT:
 		return "Human: ";
+
+	case ISN_USER_ASSISTANT:
+		return "User: ";
 	}
 	return "### Instruction: ";
 }
@@ -374,6 +387,7 @@ std::string Llama::isn_rubric_closing(bool trail_space) const {
 	default:
 	case ISN_ALPACA:
 	case ISN_ALPACA_SYS:
+	case ISN_DEEPSEEK_CODER:
 		// add a trailing space if we're beginning the response ourselves.
 		if (trail_space)
 			return "\n\n### Response: ";
@@ -397,6 +411,7 @@ std::string Llama::isn_rubric_closing(bool trail_space) const {
 	case ISN_TULU:
 		return "\n<|assistant|>\n";
 	case ISN_HUMAN_ASSISTANT:
+	case ISN_USER_ASSISTANT:
 		if (trail_space)
 			return "\nAssistant: ";
 		return "\nAssistant:";
@@ -420,6 +435,7 @@ bool Llama::uses_system_prompt() const {
 	case ISN_VICUNA:
 	case ISN_ORCA:
 	case ISN_MONADGPT:
+	case ISN_DEEPSEEK_CODER:
 		return true;
 
 	case ISN_CUSTOM:
@@ -459,6 +475,10 @@ std::string Llama::isn_system_prompt() const {
 	case ISN_MONADGPT:
 		// this is the system message it was trained with, so this is what you want to use in most applications.
 		return "You are MonadGPT, a very old chatbot from the 17th century. Please answer the questions using an archaic language";
+
+	case ISN_DEEPSEEK_CODER:
+		// DeepSeek Coder-Instruct default system instruction.
+		return "You are an AI programming assistant, utilizing the DeepSeek Coder model, developed by DeepSeek Company, and you only answer questions related to computer science. For politically sensitive questions, security and privacy issues, and other non-computer science questions, you will refuse to answer.";
 
 	case ISN_ORCA:
 		return "Follow the user instructions faithfully and helpfully to the best of your ability.";

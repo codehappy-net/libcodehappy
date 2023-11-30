@@ -67,10 +67,9 @@ void compile_folder_embeddings(Llama& llama, const std::string& folder, const st
 int app_main() {
 	ArgParse ap;
 	std::string text, folder, out_file = "llama.embeddings", in_file = "llama.embeddings", search;
-	std::string model = "/home/exx/ml/llama-gguf/models/mythomax-l2-13b.Q8_0.gguf";
 	int ntok = 0;
 
-	ap.add_argument("model", type_string, "language model to use (in GGML/GGUF format, default is Mythomax 13B, Llama 2 70B recommended)");
+	llama_args(ap);
 	ap.add_argument("folder", type_string, "folder of text files to compile an embedding database from");
 	ap.add_argument("out", type_string, "name of the output file (default is 'llama.embeddings')");
 	ap.add_argument("in", type_string, "input embedding file; use with 'search' (default is 'llama.embeddings')");
@@ -78,7 +77,6 @@ int app_main() {
 	ap.add_argument("ntok", type_int, "the number of tokens per embedding (default is 0, which indicates maximum allowed by context)", &ntok);
 	ap.ensure_args(argc, argv);
 
-	ap.value_str("model", model);
 	ap.value_str("folder", folder);
 	ap.value_str("out", out_file);
 	ap.value_str("in", in_file);
@@ -90,7 +88,7 @@ int app_main() {
 		return 1;
 	}
 
-	Llama llama(model);
+	Llama llama(ap);
 	llama.enable_embeddings();
 
 	if (search.empty())

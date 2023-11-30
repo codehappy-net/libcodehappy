@@ -26,14 +26,13 @@ void summarize(std::vector<llama_token>& toks, int i1, int i2, std::ostream& o, 
 
 int app_main() {
 	ArgParse ap;
-	std::string model_path = "/home/exx/ml/llama-gguf/models/mythomax-l2-13b.Q8_0.gguf";
 	std::string input, output = "output.txt";
 	int tok_per = 2000;
 	bool overlap = false;
 
+	llama_args(ap);
 	ap.add_argument("input", type_string, "Input file to summarize");
 	ap.add_argument("output", type_string, "Output file to contain the summarizations (default output.txt)");
-	ap.add_argument("model", type_string, "Model (path to ggml-compatible .bin file, Mythomax 13B default)");
 	ap.add_argument("tokens_per", type_int, "The number of tokens per chunk to summarize (default 2000)", &tok_per);
 	ap.add_argument("overlap", type_none, "Use overlapping excerpts in the summarization.", &overlap);
 	ap.ensure_args(argc, argv);
@@ -43,14 +42,11 @@ int app_main() {
 		codehappy_cerr << "Error: Please provide an input file to summarize.\n";
 		return 1;
 	}
-	if (ap.flag_present("model")) {
-		model_path = ap.value_str("model");
-	}
 	if (ap.flag_present("output")) {
 		output = ap.value_str("output");
 	}
 
-	Llama llama(model_path);
+	Llama llama(ap);
 	RamFile rf(input, RAMFILE_READONLY);
 	char* buf = (char *)rf.buffer();
 	std::vector<llama_token> toks;
