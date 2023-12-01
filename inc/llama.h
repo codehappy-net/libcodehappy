@@ -86,6 +86,7 @@ struct ChatEntry {
 
 /* Different types of instruction rubrics that might be used by instruction-tuned models. */
 enum InstructionType {
+	/* ensure that __rubric_names[] is updated when adding isn rubrics */
 	ISN_CUSTOM = -1,	// Use the rubric prefix and suffix supplied by the user.
 	ISN_ALPACA = 0,	// ### Instruction: and ### Response:
 	ISN_ALPACA_SYS,	// Alpaca, but with the default system message before ### Instruction:
@@ -101,9 +102,15 @@ enum InstructionType {
 	ISN_HUMAN_ASSISTANT,	// Human: and Assistant:
 	ISN_USER_ASSISTANT,	// User: and Assistant:
 	ISN_DEEPSEEK_CODER,	// DeepSeek Coder-Instruct
+	ISN_GUANACO,		// ### Human: and ### Assistant: (yes, really)
+	ISN_ZEPHYR,		// <|system|> </s> <|user|> </s> <|assistant|> (lollerskates)
+	ISN_PHIND,		// ### System Prompt, ### User Message, ### Assistant (sigh)
+	ISN_ORCA_HASHES,	// ### System: ### User: ### Assistant: (fbpfbpfbpfbpfft)
+	ISN_XWINCODER,		// <system>: <user>: and <AI>:
 
-	/* this should always be the last enum: indicates the number of rubrics */
+	/* these should always be last */
 	ISN_MAX,
+	ISN_INVALID = ISN_MAX
 };
 
 typedef void (*LlamaCallback)(const char *);
@@ -323,6 +330,10 @@ public:
 	int get_layers_to_gpu() const;
 	void load_fully_on_gpu();
 
+	// Information about instruction rubrics.
+	static std::string isn_rubric_name(InstructionType it);
+	static InstructionType isn_rubric_from_string(const std::string& s);
+
 	// Reset the Llama contexts.
 	void reset_contexts();
 
@@ -335,6 +346,7 @@ private:
 	void tokenize_cfg_prompt();
 	bool remove_stop_string(std::vector<llama_token>& toks);
 	void do_init(const char* model_path, int vram_gb, bool og_llama, bool is_70b);
+	InstructionType isn_rubric_from_model_name(const char * s) const;
 	
 	gpt_params params;
 	// TODO: static cache, if multiple Llama objects are created that use the same model, just load it once and share between class instances.

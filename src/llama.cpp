@@ -151,11 +151,22 @@ Llama::Llama(const ArgParse& ap, const LlamaDefaults& defaults) {
 	}
 
 	if (ap.flag_present("llama-rubric")) {
-		iv = ap.value_int("llama-rubric");
-		if (iv < 0 || iv >= (int) ISN_MAX)
-			codehappy_cerr << "invalid rubric index: " << iv << " (maximum permissable is " << ((int)ISN_MAX) - 1 << ")\n";
-		else
-			isn_type = (InstructionType) iv;
+		std::string rubric_name;
+		InstructionType it;
+		ap.value_str("llama-rubric", rubric_name);
+		if (!rubric_name.empty() && isdigit(rubric_name[0])) {
+			iv = atoi(rubric_name.c_str());
+			if (iv >= (int) ISN_MAX)
+				codehappy_cerr << "invalid rubric index: " << iv << " (maximum permissable is " << ((int)ISN_MAX) - 1 << ")\n";
+			else
+				isn_type = (InstructionType) iv;		
+		} else {
+			it = isn_rubric_from_string(rubric_name);
+			if (it == ISN_INVALID)
+				codehappy_cerr << "unknown isn rubric identifier: " << rubric_name << "\n";
+			else
+				isn_type = it;
+		}
 	}
 
 	if (ap.flag_present("llama-system")) {
@@ -188,7 +199,7 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	/*** Determining the default number of model layers to put on GPU. These values were selected for one 24GB VRAM card,
 	     and will need to be scaled for a different card. These values can be changed by calling layers_to_gpu(),
 	     run_cpu_only(), or load_fully_on_gpu() before loading the model. ***/
-	const char* paramstrs[] = { "180b", "175b", "120b", "80b", "70b", "65b", "40b", "34b", "33b", "30b", "20b", "15b", "13b", "11b", "7b", "3b" };
+	const char* paramstrs[] = { "180b", "175b", "120b", "80b", "72b", "70b", "67b", "65b", "40b", "34b", "33b", "30b", "20b", "15b", "13b", "11b", "7b", "3b" };
 	const char* quantstr[] = { "q8", "q6", "q5", "q4", "q3", "q2" };
 
 	if (is_70b)
@@ -217,10 +228,16 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	case 80:
 		layers4 = 28;
 		break;
+	case 72:
 	case 70:
-	case 65:
-	case 40:
 		layers4 = 44;
+		break;
+	case 67:
+	case 65:
+		layers4 = 52;
+		break;
+	case 40:
+		layers4 = 60;
 		break;
 	case 34:
 	case 33:
@@ -252,33 +269,23 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	}
 
 	// attempt to guess the instruction rubric (if any) used by the model from the name.
-	if (!__stristr(model_path, "mistral"))
-		isn_type = ISN_MISTRAL;
-	if (!__stristr(model_path, "pygmalion"))
-		isn_type = ISN_PYGMALION;
-	if (!__stristr(model_path, "codellama"))
-		isn_type = ISN_CODELLAMA;
-	if (!__stristr(model_path, "hermes"))
-		isn_type = ISN_CHATML;
-	if (!__stristr(model_path, "capyb"))
-		isn_type = ISN_VICUNA;
-	if (!__stristr(model_path, "vicuna"))
-		isn_type = ISN_VICUNA;
-	if (!__stristr(model_path, "monadgpt"))
-		isn_type = ISN_MONADGPT;
-	if (!__stristr(model_path, "tulu"))
-		isn_type = ISN_TULU;
-	if (!__stristr(model_path, "tess"))
-		isn_type = ISN_ORCA;
-	if (!__stristr(model_path, "deepseek")) {
-		if (!__stristr(model_path, "coder")) {
-			// DeepSeek Coder-Instruct
-			isn_type = ISN_DEEPSEEK_CODER;
-		} else {
-			// DeepSeek chat
-			isn_type = ISN_USER_ASSISTANT;
-		}
-	}
+	InstructionType it = isn_rubric_from_model_name(model_path);
+	if (it != ISN_INVALID)
+		isn_type = it;
+
+	// sometimes context size is included in the file name as well
+	if (__stristr(model_path, "-200k") != nullptr)
+		params.n_ctx = 200000;
+	if (__stristr(model_path, "-100k") != nullptr)
+		params.n_ctx = 100000;
+	if (__stristr(model_path, "8192") != nullptr || __stristr(model_path, "-8k") != nullptr)
+		params.n_ctx = 8192;
+	if (__stristr(model_path, "-16k") != nullptr)
+		params.n_ctx = 16384;
+	if (__stristr(model_path, "-32k") != nullptr)
+		params.n_ctx = 32768;
+	if (__stristr(model_path, "-64k") != nullptr)
+		params.n_ctx = 65536;
 
 	params.n_threads = std::max((int) std::thread::hardware_concurrency() / 2, 1);
 
@@ -378,6 +385,45 @@ std::string Llama::isn_rubric_opening() const {
 
 	case ISN_USER_ASSISTANT:
 		return "User: ";
+
+	case ISN_GUANACO:
+		return "### Human: ";
+
+	case ISN_ZEPHYR:
+		if (!sys_prompt.empty()) {
+			ret = "<|system|>\n";
+			ret += sys_prompt;
+			ret += "\n</s>\n<|user|>\n";
+			return ret;
+		}
+		return "<|system|>\n</s>\n<|user|>\n";
+
+	case ISN_PHIND:
+		if (sys_prompt.empty()) {
+			return "### User Message\n";
+		}
+		ret = "### System Prompt\n";
+		ret += sys_prompt;
+		ret += "\n### User Message\n";
+		return ret;
+
+	case ISN_ORCA_HASHES:
+		if (sys_prompt.empty()) {
+			return "### User:\n";
+		}
+		ret = "### System:\n";
+		ret += sys_prompt;
+		ret += "\n### User:\n";
+		return ret;
+
+	case ISN_XWINCODER:
+		if (sys_prompt.empty()) {
+			return "<user>: ";
+		}
+		ret = "<system>: ";
+		ret += sys_prompt;
+		ret += "\n<user>: ";
+		return ret;
 	}
 	return "### Instruction: ";
 }
@@ -415,6 +461,19 @@ std::string Llama::isn_rubric_closing(bool trail_space) const {
 		if (trail_space)
 			return "\nAssistant: ";
 		return "\nAssistant:";
+	case ISN_GUANACO:
+	case ISN_ORCA_HASHES:
+		if (trail_space)
+			return "\n### Assistant: ";
+		return "\n### Assistant:";
+	case ISN_ZEPHYR:
+		return "</s>\n<|assistant|>\n";
+	case ISN_PHIND:
+		return "\n### Assistant\n";
+	case ISN_XWINCODER:
+		if (trail_space)
+			return "\n<AI>: ";
+		return "\n<AI>:";
 	}
 	return "\n\n### Response:";
 }
@@ -436,10 +495,15 @@ bool Llama::uses_system_prompt() const {
 	case ISN_ORCA:
 	case ISN_MONADGPT:
 	case ISN_DEEPSEEK_CODER:
+	case ISN_ZEPHYR:
+	case ISN_PHIND:
+	case ISN_ORCA_HASHES:
+	case ISN_XWINCODER:
 		return true;
 
 	case ISN_CUSTOM:
 		// permit using system prompts with custom rubrics -- they're prepended to the instruction, along with a newline.
+		// other custom system prompts can be worked into the rubric prefix or suffix as needed.
 		return true;
 	}
 
@@ -463,6 +527,8 @@ std::string Llama::isn_system_prompt() const {
 	case ISN_ALPACA:
 	case ISN_CHATML:
 	case ISN_VICUNA:
+	case ISN_ZEPHYR:
+	case ISN_ORCA_HASHES:
 	case ISN_CUSTOM:
 		// These *can* use a system message, but none is supplied by default.
 		return "";
@@ -482,10 +548,92 @@ std::string Llama::isn_system_prompt() const {
 
 	case ISN_ORCA:
 		return "Follow the user instructions faithfully and helpfully to the best of your ability.";
+
+	case ISN_PHIND:
+		// default Phind LlamaCoder system message
+		return "You are an intelligent programming assistant.";
+
+	case ISN_XWINCODER:
+		// default for XwinCoder
+		return "You are an AI coding assistant that helps people with programming. Write a response that appropriately completes the user's request.";
 	}
 
 	// This is the Alpaca default system prompt, it's also a fairly safe default since lots of people train on Alpaca examples.
 	return "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n";
+}
+
+static std::string __rubric_names[] = {
+	"alpaca", "alpaca-system", "mistral", "pygmalion", "codellama", "chatml", "vicuna", "monadgpt",
+	"tulu", "orca", "llama2chat", "human-assistant", "user-assistant", "deepseek-coder", "guanaco",
+	"zephyr", "phind", "orca-hashes", "xwincoder",
+};
+
+std::string Llama::isn_rubric_name(InstructionType it) {
+	switch (it) {
+	case ISN_CUSTOM:
+		return "custom";
+	case ISN_INVALID:
+		return "invalid";
+	}
+
+	int iv = (int) it;
+	if (iv < 0 || iv >= (int) ISN_MAX)
+		return "invalid";
+	return __rubric_names[iv];
+}
+
+InstructionType Llama::isn_rubric_from_string(const std::string& s) {
+	for (int i = 0; i < (int) ISN_MAX; ++i) {
+		if (!__stricmp(__rubric_names[i].c_str(), s.c_str()))
+			return (InstructionType) i;
+	}
+
+	return ISN_INVALID;
+}
+
+InstructionType Llama::isn_rubric_from_model_name(const char * s) const {
+	InstructionType it = ISN_INVALID;
+	/* note that order is important in the following array -- original airoboros models used Vicuna
+	   isn rubric, while airoboros-l2 models use Llama 2 Chat rubric, for example. Although ISN_ALPACA
+	   is the default and doesn't 'need' to be checked here, I've included several Alpaca models here
+	   just to document their rubrics have been verified. */
+	const std::pair<std::string, InstructionType> rubrics[] = {
+		{ "alpaca", ISN_ALPACA }, { "goliath", ISN_ALPACA }, { "psyfighter", ISN_ALPACA }, { "xwin", ISN_ALPACA },
+		{ "mistral", ISN_MISTRAL }, { "pygmalion", ISN_PYGMALION }, { "codellama", ISN_CODELLAMA },
+		{ "llama-2", ISN_LLAMA2CHAT }, { "hermes", ISN_CHATML }, { "capyb", ISN_VICUNA }, { "vicuna", ISN_VICUNA },
+		{ "orca-2", ISN_CHATML }, { "monadgpt", ISN_MONADGPT }, { "tulu", ISN_TULU }, { "tess", ISN_ORCA },
+		{ "lzlv", ISN_ALPACA_SYS }, { "airoboros", ISN_VICUNA }, { "airoboros-l2", ISN_LLAMA2CHAT },
+		{ "guanaco", ISN_GUANACO }, { "meditron", ISN_CHATML }, { "chronomaid", ISN_ALPACA_SYS },
+		{ "tigerbot", ISN_ALPACA_SYS }, { "zephyr", ISN_ZEPHYR }, { "yi-34b", ISN_HUMAN_ASSISTANT },
+		{ "yi-6b", ISN_HUMAN_ASSISTANT }, { "phind", ISN_PHIND }, { "pivot", ISN_ALPACA }, { "dolphin", ISN_CHATML },
+		{ "openorca", ISN_CHATML }, { "gorilla", ISN_VICUNA }, { "mythochronos", ISN_ALPACA_SYS },
+		{ "saiga", ISN_CHATML }, { "noromaid", ISN_ALPACA_SYS }, { "mythomist", ISN_ALPACA },
+		{ "mythomax", ISN_ALPACA_SYS }, { "synatra", ISN_CHATML }, { "causallm", ISN_CHATML },
+		{ "chupacabra", ISN_ORCA_HASHES }, { "valiant", ISN_LLAMA2CHAT }, { "falcon", ISN_USER_ASSISTANT },
+		{ "spicyboros", ISN_VICUNA }, { "synthia", ISN_ORCA }, { "xwincoder", ISN_XWINCODER },
+		{ "wizardmath", ISN_ALPACA_SYS }, { "wizardlm", ISN_VICUNA }, { "mythalion", ISN_ALPACA_SYS },
+		{ "platypus", ISN_ALPACA_SYS }, { "beluga", ISN_ORCA_HASHES }, { "euryale", ISN_ALPACA_SYS },
+		{ "amethyst", ISN_ALPACA_SYS }, { "agentlm", ISN_LLAMA2CHAT }, { "lemur", ISN_CHATML },
+		{ "capybara-tess", ISN_ORCA },
+	};
+	// Goliath does fine taking either ISN_ALPACA or ISN_VICUNA, does one perform better?
+
+	for (const auto& p : rubrics) {
+		if (__stristr(s, p.first.c_str()) != nullptr)
+			it = p.second;
+	}
+
+	if (__stristr(s, "deepseek") != nullptr) {
+		if (__stristr(s, "coder") != nullptr) {
+			// DeepSeek Coder-Instruct
+			it = ISN_DEEPSEEK_CODER;
+		} else {
+			// DeepSeek chat
+			it = ISN_USER_ASSISTANT;
+		}
+	}
+
+	return it;
 }
 
 void Llama::ensure_model_loaded() {
@@ -1458,7 +1606,7 @@ void llama_args(ArgParse& ap) {
 	ap.add_argument("llama-layers", type_int, "number of Llama layers to load onto GPU for inference");
 	ap.add_argument("llama-vram", type_int, "use this many GB of VRAM to determine default number of layers loaded to gpu");
 	ap.add_argument("llama-context", type_int, "the number of tokens in the context window for this model");
-	ap.add_argument("llama-rubric", type_int, "identifier for the rubric used by the model (Alpaca=0)");
+	ap.add_argument("llama-rubric", type_string, "identifier for the rubric used by the model");
 	ap.add_argument("llama-system", type_string, "specify a custom system prompt (for rubrics that use system prompts)");
 }
 
