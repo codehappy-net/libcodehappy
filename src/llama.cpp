@@ -1264,13 +1264,13 @@ void Llama::load_fully_on_gpu() {
 	layers_to_gpu(99999);
 }
 
-LlamaEmbedding* Llama::embedding_for_prompt(const std::string& str) {
-	LlamaEmbedding* ret = new LlamaEmbedding;
+LMEmbedding* Llama::embedding_for_prompt(const std::string& str) {
+	LMEmbedding* ret = new LMEmbedding;
 	embedding_for_prompt(str, ret);
 	return ret;
 }
 
-void Llama::embedding_for_prompt(const std::string& str, LlamaEmbedding* le) {
+void Llama::embedding_for_prompt(const std::string& str, LMEmbedding* le) {
 	ship_assert(le != nullptr);
 	if (!params.embedding) {
 		codehappy_cerr << "be sure to enable embeddings before calculating them!\n";
@@ -1306,13 +1306,13 @@ void Llama::embedding_for_prompt(const std::string& str, LlamaEmbedding* le) {
 	le->copy_from_array(llama_n_embd(model), embeds);
 }
 
-LlamaEmbeddingFile* Llama::embeddings_for_file(const std::string& str, int n_tok) {
-	LlamaEmbeddingFile* ret = new LlamaEmbeddingFile;
+LMEmbeddingFile* Llama::embeddings_for_file(const std::string& str, int n_tok) {
+	LMEmbeddingFile* ret = new LMEmbeddingFile;
 	embeddings_for_file(str, ret, n_tok);
 	return ret;
 }
 
-void Llama::embeddings_for_file(const std::string& str, LlamaEmbeddingFile* lef, int n_tok) {
+void Llama::embeddings_for_file(const std::string& str, LMEmbeddingFile* lef, int n_tok) {
 	ship_assert(lef != nullptr);
 	if (n_tok <= 0)
 		n_tok = context_size_trained() / 2;
@@ -1327,7 +1327,7 @@ void Llama::embeddings_for_file(const std::string& str, LlamaEmbeddingFile* lef,
 	int offs = 0;
 	while (e < toks.size()) {
 		std::vector<llama_token> toks_iter;
-		LlamaEmbedding* le;
+		LMEmbedding* le;
 
 		for (int f = e; f < e + n_tok && f < toks.size(); ++f) {
 			toks_iter.push_back(toks[f]);
@@ -1343,30 +1343,19 @@ void Llama::embeddings_for_file(const std::string& str, LlamaEmbeddingFile* lef,
 	}
 }
 
-LlamaEmbeddingFolder* Llama::embeddings_for_folder(const std::string& path, int n_tok) {
-	LlamaEmbeddingFolder* ret = new LlamaEmbeddingFolder;
+LMEmbeddingFolder* Llama::embeddings_for_folder(const std::string& path, int n_tok) {
+	LMEmbeddingFolder* ret = new LMEmbeddingFolder;
 	embeddings_for_folder(path, ret, n_tok);
 	return ret;
 }
 
-void Llama::embeddings_for_folder(const std::string& path, LlamaEmbeddingFolder* lef, int n_tok) {
+void Llama::embeddings_for_folder(const std::string& path, LMEmbeddingFolder* lef, int n_tok) {
 	DIR* di = opendir(path.c_str());
 	dirent* entry;
-	/* Text file extensions we're supporting. */
-	const char* extensions[] = {
-		".txt", ".html", ".htm", ".c", ".cpp", ".cxx", ".py"
-	};
 
 	while (entry = readdir(di)) {
 		const char* w;
-		bool ok = false;
-		for (const auto ext : extensions) {
-			w = strstr(entry->d_name, ext);
-			if (!is_null(w)) {
-				ok = true;
-				break;
-			}
-		}
+		bool ok = is_text_file_extension(entry->d_name);
 		if (!ok)
 			continue;
 			
@@ -1389,23 +1378,27 @@ ChatEntry::ChatEntry(Llama* l, const std::string& p, const std::string& r) {
 	tokens = l->token_count(entry);
 }
 
-LlamaEmbedding::LlamaEmbedding() {
+LMEmbedding::LMEmbedding() {
 	n_embed = 0;
 	embed_data = nullptr;
+	text = nullptr;
 }
 
-LlamaEmbedding::~LlamaEmbedding() {
+LMEmbedding::~LMEmbedding() {
 	free();
 }
 
-void LlamaEmbedding::free() {
+void LMEmbedding::free() {
 	if (embed_data != nullptr)
 		delete embed_data;
+	if (text != nullptr)
+		delete text;
 	n_embed = 0;
 	embed_data = nullptr;
+	text = nullptr;
 }
 
-double LlamaEmbedding::cosine_similarity(const LlamaEmbedding* le) const {
+double LMEmbedding::cosine_similarity(const LMEmbedding* le) const {
 	double cos_val;
 
 	NOT_NULL_OR_RETURN(embed_data, 0.0);
@@ -1415,7 +1408,7 @@ double LlamaEmbedding::cosine_similarity(const LlamaEmbedding* le) const {
 	return cos_val;
 }
 
-double LlamaEmbedding::magnitude() const {
+double LMEmbedding::magnitude() const {
 	double ret = 0.;
 	NOT_NULL_OR_RETURN(embed_data, 0.0);
 
@@ -1426,7 +1419,7 @@ double LlamaEmbedding::magnitude() const {
 	return sqrt(ret);
 }
 
-double LlamaEmbedding::dot_product(const LlamaEmbedding* le) const {
+double LMEmbedding::dot_product(const LMEmbedding* le) const {
 	double ret = 0.;
 
 	NOT_NULL_OR_RETURN(embed_data, 0.0);
@@ -1440,7 +1433,7 @@ double LlamaEmbedding::dot_product(const LlamaEmbedding* le) const {
 	return ret;
 }
 
-void LlamaEmbedding::copy_from_array(int n_el, const float* array) {
+void LMEmbedding::copy_from_array(int n_el, const float* array) {
 	ship_assert(n_el >= 0);
 	ship_assert(array != nullptr);
 	free();
@@ -1451,28 +1444,41 @@ void LlamaEmbedding::copy_from_array(int n_el, const float* array) {
 	n_embed = n_el;
 }
 
-void LlamaEmbedding::out_to_ramfile(RamFile* rf) {
+void LMEmbedding::out_to_ramfile(RamFile* rf) {
 	rf->put32(n_embed);
 	for (int e = 0; e < n_embed; ++e)
 		rf->putfloat(embed_data[e]);
+	rf->putstring(text);
 }
 
-void LlamaEmbedding::in_from_ramfile(RamFile* rf) {
+void LMEmbedding::in_from_ramfile(RamFile* rf) {
 	free();
 	n_embed = rf->get32();
 	embed_data = new float [n_embed];
 	for (int e = 0; e < n_embed; ++e)
 		embed_data[e] = rf->getfloat();
+	std::string text_s = rf->getstring();
+	if (!text_s.empty()) {
+		text = new char [text_s.length() + 1];
+		strcpy(text, text_s.c_str());
+	}
 }
 
-LlamaEmbeddingFile::LlamaEmbeddingFile() {
+std::string LMEmbedding::original_text() const {
+	std::string ret;
+	if (text != nullptr)
+		ret = text;
+	return ret;
 }
 
-LlamaEmbeddingFile::~LlamaEmbeddingFile() {
+LMEmbeddingFile::LMEmbeddingFile() {
+}
+
+LMEmbeddingFile::~LMEmbeddingFile() {
 	free();
 }
 
-void LlamaEmbeddingFile::free() {
+void LMEmbeddingFile::free() {
 	pathname.clear();
 	offsets.clear();
 	for (auto le : embeds)
@@ -1480,7 +1486,7 @@ void LlamaEmbeddingFile::free() {
 	embeds.clear();
 }
 
-void LlamaEmbeddingFile::out_to_ramfile(RamFile* rf) {
+void LMEmbeddingFile::out_to_ramfile(RamFile* rf) {
 	rf->putstring(pathname);
 	ship_assert(embeds.size() == offsets.size());
 	rf->put32((i32) embeds.size());
@@ -1490,20 +1496,20 @@ void LlamaEmbeddingFile::out_to_ramfile(RamFile* rf) {
 	}
 }
 
-void LlamaEmbeddingFile::in_from_ramfile(RamFile* rf) {
+void LMEmbeddingFile::in_from_ramfile(RamFile* rf) {
 	i32 sz;
 	free();
 	pathname = rf->getstring();
 	sz = rf->get32();
 	for (i32 e = 0; e < sz; ++e) {
-		LlamaEmbedding* le = new LlamaEmbedding;
+		LMEmbedding* le = new LMEmbedding;
 		le->in_from_ramfile(rf);
 		embeds.push_back(le);
 		offsets.push_back(rf->get32());
 	}
 }
 
-int LlamaEmbeddingFile::best_match(const LlamaEmbedding* le, double* score) {
+int LMEmbeddingFile::best_match(const LMEmbedding* le, double* score) {
 	double best_sc = -2.;
 	int iret = -1;
 	
@@ -1520,51 +1526,68 @@ int LlamaEmbeddingFile::best_match(const LlamaEmbedding* le, double* score) {
 	return iret;
 }
 
-int LlamaEmbeddingFile::count_embeddings() const {
+int LMEmbeddingFile::count_embeddings() const {
 	return embeds.size();
 }
 
-LlamaEmbeddingFolder::LlamaEmbeddingFolder() {
+int LMEmbeddingFile::count_text_bytes() const {
+	int ret = 0;
+	for (const auto e : embeds) {
+		ret += 4;
+		if (!is_null(e->text))
+			ret += strlen(e->text);
+	}
+	return ret;
 }
 
-LlamaEmbeddingFolder::~LlamaEmbeddingFolder() {
+LMEmbeddingFolder::LMEmbeddingFolder() {
+}
+
+LMEmbeddingFolder::~LMEmbeddingFolder() {
 	free();
 }
 
-void LlamaEmbeddingFolder::out_to_ramfile(RamFile* rf) {
+void LMEmbeddingFolder::out_to_ramfile(RamFile* rf) {
 	rf->put32((i32) files.size());
 	for (auto f : files)
 		f->out_to_ramfile(rf);
 }
 
-void LlamaEmbeddingFolder::in_from_ramfile(RamFile* rf) {
+void LMEmbeddingFolder::in_from_ramfile(RamFile* rf) {
 	free();
 	i32 nf = rf->get32();
 	for (i32 e = 0; e < nf; ++e) {
-		LlamaEmbeddingFile* lef = new LlamaEmbeddingFile;
+		LMEmbeddingFile* lef = new LMEmbeddingFile;
 		lef->in_from_ramfile(rf);
 		files.push_back(lef);
 	}
 }
 
-void LlamaEmbeddingFolder::free() {
+void LMEmbeddingFolder::free() {
 	for (auto f : files)
 		delete f;
 	files.clear();
 }
 
-int LlamaEmbeddingFolder::count_files() const {
+int LMEmbeddingFolder::count_files() const {
 	return files.size();
 }
 
-int LlamaEmbeddingFolder::count_embeddings() const {
+int LMEmbeddingFolder::count_embeddings() const {
 	int ret = 0;
 	for (const auto* f : files)
 		ret += f->count_embeddings();
 	return ret;
 }
 
-int LlamaEmbeddingFolder::best_match(int file_idx, const LlamaEmbedding* le, double* score) {
+int LMEmbeddingFolder::count_text_bytes() const {
+	int ret = 0;
+	for (const auto* f : files)
+		ret += f->count_text_bytes();
+	return ret;
+}
+
+int LMEmbeddingFolder::best_match(int file_idx, const LMEmbedding* le, double* score) {
 	if (file_idx < 0 || file_idx >= files.size())
 		return -1;
 	return files[file_idx]->best_match(le, score);
@@ -1665,6 +1688,22 @@ std::string string_from_text_file(const std::string& path, bool restore_newlines
 	i.clear();
 
 	return ret;
+}
+
+bool is_text_file_extension(const char* pathname) {
+	/* Text file extensions we're supporting. */
+	const char* extensions[] = {
+		".txt", ".html", ".htm", ".c", ".cpp", ".cxx", ".py", ".md", ".me"
+	};
+
+	for (const auto ext : extensions) {
+		const char* w = strstr(pathname, ext);
+		if (!is_null(w)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 /* end llama.cpp */

@@ -167,6 +167,7 @@ public:
 
 	// And C++ strings.
 	int putstring(const std::string& s);
+	int putstring(const char* s);
 	std::string getstring();
 
 	// Is the read pointer at the end of the ramfile?

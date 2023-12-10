@@ -828,6 +828,20 @@ int RamFile::putstring(const std::string& s) {
 	return 0;
 }
 
+int RamFile::putstring(const char* s) {
+	if (is_null(s)) {
+		putu32(0);
+		return 0;
+	}
+	u32 len = strlen(s);
+	putu32(len);
+	for (u32 e = 0; e < len; ++e) {
+		int i = ((unsigned char) s[e]);
+		putc(i);
+	}
+	return 0;
+}
+
 std::string RamFile::getstring() {
 	std::string ret;
 	u32 len = getu32();

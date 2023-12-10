@@ -14,18 +14,18 @@
 class Llama;
 
 /*** embeddings and embedding managers ***/
-struct LlamaEmbedding {
-	LlamaEmbedding();
-	~LlamaEmbedding();
+struct LMEmbedding {
+	LMEmbedding();
+	~LMEmbedding();
 
 	// Compute the cosine similarity with another embedding.
-	double cosine_similarity(const LlamaEmbedding* le) const;
+	double cosine_similarity(const LMEmbedding* le) const;
 
 	// Compute the magnitude of the embedding.
 	double magnitude() const;
 
 	// Compute the dot product of the embedding with another.
-	double dot_product(const LlamaEmbedding* le) const;
+	double dot_product(const LMEmbedding* le) const;
 
 	// Copy the values from the provided float array.
 	void copy_from_array(int n_el, const float* array);
@@ -39,41 +39,47 @@ struct LlamaEmbedding {
 	// Free data allocated for the embedding.
 	void free();
 
+	// Return the text as a std::string
+	std::string original_text() const;
+
 	int n_embed;		// size (dimension) of the embedding
 	float* embed_data;	// embedding representation
+	char* text;		// text
 };
 
-struct LlamaEmbeddingFile {
-	LlamaEmbeddingFile();
-	~LlamaEmbeddingFile();
+struct LMEmbeddingFile {
+	LMEmbeddingFile();
+	~LMEmbeddingFile();
 
 	std::string pathname;
-	std::vector<LlamaEmbedding*> embeds;
+	std::vector<LMEmbedding*> embeds;
 	std::vector<u32> offsets;
 
 	// Retrieve the best match (by cosine similarity) to the passed-in embedding.
 	// The return value is the index of the best match in embeds/offsets. If score is non-NULL,
 	// the cosine similarity is returned in that variable.
-	int best_match(const LlamaEmbedding* le, double* score = nullptr);
+	int best_match(const LMEmbedding* le, double* score = nullptr);
 
 	void out_to_ramfile(RamFile* rf);
 	void in_from_ramfile(RamFile* rf);
 	void free();
 	int count_embeddings() const;
+	int count_text_bytes() const;
 };
 
-struct LlamaEmbeddingFolder {
-	LlamaEmbeddingFolder();
-	~LlamaEmbeddingFolder();
+struct LMEmbeddingFolder {
+	LMEmbeddingFolder();
+	~LMEmbeddingFolder();
 
-	std::vector<LlamaEmbeddingFile*> files;
+	std::vector<LMEmbeddingFile*> files;
 
 	void out_to_ramfile(RamFile* rf);
 	void in_from_ramfile(RamFile* rf);
 	void free();
 	int count_files() const;
 	int count_embeddings() const;
-	int best_match(int file_idx, const LlamaEmbedding* le, double* score = nullptr);
+	int count_text_bytes() const;
+	int best_match(int file_idx, const LMEmbedding* le, double* score = nullptr);
 };
 
 struct ChatEntry {
@@ -164,18 +170,18 @@ public:
 	std::string truncate_nicely_by_tokens(const char* str, u32 max_tokens);
 
 	// Create embeddings for given text conditioning.
-	LlamaEmbedding* embedding_for_prompt(const std::string& str);
-	void embedding_for_prompt(const std::string& str, LlamaEmbedding* le);
+	LMEmbedding* embedding_for_prompt(const std::string& str);
+	void embedding_for_prompt(const std::string& str, LMEmbedding* le);
 
 	// Create embeddings for an entire text file: it's broken up into chunks of n_tok tokens (if n_tok is 0,
 	// then maximum model context / 2 is used.)
-	LlamaEmbeddingFile* embeddings_for_file(const std::string& str, int n_tok = 0);
-	void embeddings_for_file(const std::string& str, LlamaEmbeddingFile* lef, int n_tok = 0);
+	LMEmbeddingFile* embeddings_for_file(const std::string& str, int n_tok = 0);
+	void embeddings_for_file(const std::string& str, LMEmbeddingFile* lef, int n_tok = 0);
 
 	// Create embeddings for all text files (*.txt) in a folder. As above, documents are broken into
 	// pieces of length n_tok tokens (if n_tok <= 0, maximum model context / 2 is used.)
-	LlamaEmbeddingFolder* embeddings_for_folder(const std::string& path, int n_tok = 0);
-	void embeddings_for_folder(const std::string& path, LlamaEmbeddingFolder* lef, int n_tok = 0);
+	LMEmbeddingFolder* embeddings_for_folder(const std::string& path, int n_tok = 0);
+	void embeddings_for_folder(const std::string& path, LMEmbeddingFolder* lef, int n_tok = 0);
 
 	// Give an initial prompt/initial completion. This resets any session in progress.
 	void session_prompt(const std::string& str);
@@ -391,5 +397,8 @@ extern std::string multiline_input();
 
 /* Read a text file and return the contents as a string. restore_newlines ensures newline characters at the end of each line. */
 extern std::string string_from_text_file(const std::string& path, bool restore_newlines = true);
+
+/* Does the passed-in path have a text file extension? */
+extern bool is_text_file_extension(const char* pathname);
 
 #endif  // __LLAMA_CODEHAPPY

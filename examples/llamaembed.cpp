@@ -12,7 +12,7 @@
 #define CODEHAPPY_CUDA
 #include <libcodehappy.h>
 
-void print_stats(Llama& llama, LlamaEmbeddingFolder* lef) {
+void print_stats(Llama& llama, LMEmbeddingFolder* lef) {
 	std::cout << lef->count_files() << " text files processed.\n";
 	std::cout << lef->count_embeddings() << " total text embeddings created.\n";
 	std::cout << "Each embedding is " << llama.embedding_dimension() << " floats in length.\n";
@@ -20,8 +20,8 @@ void print_stats(Llama& llama, LlamaEmbeddingFolder* lef) {
 }
 
 void do_embedding_search(Llama& llama, const std::string& search, const std::string& in_file) {
-	LlamaEmbeddingFolder lef;
-	LlamaEmbedding* le;
+	LMEmbeddingFolder lef;
+	LMEmbedding* le;
 	double score;
 
 	RamFile rf(in_file, RAMFILE_READONLY);
@@ -54,7 +54,7 @@ void do_embedding_search(Llama& llama, const std::string& search, const std::str
 
 void compile_folder_embeddings(Llama& llama, const std::string& folder, const std::string& out_file, int ntok) {
 	std::cout << "Compiling embeddings for text documents in folder '" << folder << "', using ntok == " << ntok << "...\n";
-	LlamaEmbeddingFolder* lef = llama.embeddings_for_folder(folder, ntok);
+	LMEmbeddingFolder* lef = llama.embeddings_for_folder(folder, ntok);
 	print_stats(llama, lef);
 
 	std::cout << "Saving to file '" << out_file << "'...\n";

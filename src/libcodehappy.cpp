@@ -1062,6 +1062,8 @@ bool is_codehappy_verbose() {
 #include "llama.cpp"
 #include "external/stable-diffusion/stable-diffusion.cpp"
 #include "ldm.cpp"
+#include "external/bert.cpp"
+#include "bert.cpp"
 
 // SQLite is compiled separately (it's C99.)
 

@@ -49,6 +49,7 @@ Authors of other bits of code and the associated licensing include:
 - Dr. Tim Ferguson, for codecs for various old video formats (CC with attribution)
 - Guillaume Chereau, portable file dialogs and quaternion library (MIT)
 - Arian Rezazadeh, clipboard support library (MIT)
+- skeskinen, for BERT inference and embeddings support in ggml (MIT)
 - all PDCurses authors and contributors, for ANSI console support on Windows (CC0)
 - Lewis Van Winkle, for Student's T score/regularized incomplete beta function (zlib) and the GENANN neural networks library (MIT)
 - Paul Schlyter, for various astronomical functions including sunrise/sunset (CC0)
