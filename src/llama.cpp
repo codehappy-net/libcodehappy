@@ -1519,6 +1519,23 @@ void LMBestMatch::check_match(LMEmbedding* lme, double score, const char* fname,
 	
 }
 
+void LMBestMatch::sort_matches() {
+	for (int i = 0; i < MAX_EMBED_MATCHES; ++i) {
+		for (int j = i + 1; j < MAX_EMBED_MATCHES; ++j) {
+			if (matches[j] == nullptr) {
+				continue;
+			}
+			if (cos_sim[i] < cos_sim[j]) {
+				SWAP(matches[i], matches[j], LMEmbedding*);
+				SWAP(cos_sim[i], cos_sim[j], double);
+				SWAP(filename[i], filename[j], const char*);
+				SWAP(offset[i], offset[j], u32);
+				--j;
+			}
+		}
+	}
+}
+
 LMEmbeddingFile::LMEmbeddingFile() {
 }
 

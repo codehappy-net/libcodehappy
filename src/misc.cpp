@@ -22,7 +22,7 @@ const char __fatal_error_msg[] = "Fatal error!\n";
 #if	CODEHAPPY_SAFE
 const char __unsafe_call_msg[] = "Unsafe call to %s\n";
 #endif
-const char __assert_failed_msg[] = "Assertion failed!\n";
+const char __assert_failed_msg[] = "Assertion failed!";
 const char __impl_error_msg[] = "Implementation error\n";
 
 // TODO: a fair number of fns in the library with names of the form str* --

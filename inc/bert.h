@@ -42,6 +42,8 @@ public:
 	void set_nthreads(int nthreads)	{ n_threads = nthreads; }
 	bool get_save_text() const		{ return save_text; }
 	void set_save_text(bool st)		{ save_text = st; }
+	int get_nsentences() const		{ return n_sentences; }
+	void set_nsentences(int nsentences)	{ n_sentences = nsentences; }
 
 private:
 	char* normalize_string(const std::string& in_str) const;
@@ -49,13 +51,13 @@ private:
 	bert_ctx* model;
 	int n_threads;
 	bool save_text;
+	int n_sentences;
 };
 
 /*** Break a C string, in place, into sentences. If sentences is non-null, this vector is filled with pointers
-     to the beginning of each sentence. If offs is non-null, this vector is filled with offsets to the beginning
-     of each sentence. Zero terminators are placed in the C string at the end of each sentence, so if sentences
-     and offs are both null, you should store the original length or pointer to the end of the ntxt buffer. ***/
-extern void sentencify(char* ntxt, std::vector<char*>* sentences = nullptr, std::vector<u32>* offs = nullptr);
+     to the beginning of each sentence. Zero terminators are placed in the C string at the end of each sentence,
+     so if sentences is null, you should store the original length or pointer to the end of the ntxt buffer. ***/
+extern void sentencify(char* ntxt, std::vector<char*>* sentences = nullptr);
 
 #endif  // __BERT_EMBEDDINGS_H
 /*** end bert.h ***/

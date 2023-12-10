@@ -296,8 +296,8 @@
 /*** Ship assert ***/
 #ifndef ship_assert
 extern const char __assert_failed_msg[];
-#define ship_assert(x)	if (x) {} else { fputs(__assert_failed_msg, stderr); exit(999); }
-#define	SHIP_ASSERT(x)	if (x) {} else { fputs(__assert_failed_msg, stderr); exit(999); }
+#define ship_assert(x)	if (x) {} else { fprintf(stderr, "%s -- %s, line %d\n", __assert_failed_msg, __FILE__, __LINE__); exit(999); }
+#define	SHIP_ASSERT(x)	if (x) {} else { fprintf(stderr, "%s -- %s, line %d\n", __assert_failed_msg, __FILE__, __LINE__); exit(999); }
 #endif
 
 /*** Integer multiple? ***/

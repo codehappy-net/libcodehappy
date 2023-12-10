@@ -53,6 +53,8 @@ struct LMBestMatch {
 	LMBestMatch(int max_matches = MAX_EMBED_MATCHES);
 
 	void check_match(LMEmbedding* lme, double score, const char* fname = nullptr, u32 offs = 0);
+	void set_min_cosine_similarity(double min_val)	{ min_cos_sim = min_val; }
+	void sort_matches();
 
 	int n_matches;
 	int n_matches_max;

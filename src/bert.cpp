@@ -14,6 +14,7 @@ BertEmbeddingManager::BertEmbeddingManager(const std::string& model_path) {
 	assert(not_null(model));
 	n_threads = std::max((int) std::thread::hardware_concurrency() / 2, 1);
 	save_text = true;
+	n_sentences = 1;
 }
 
 BertEmbeddingManager::~BertEmbeddingManager() {
@@ -75,7 +76,7 @@ static bool check_abbrev(char* w, char* wn, char* we) {
 }
 
 /*** break a C string, in place, into sentences. ***/
-void sentencify(char* ntxt, std::vector<char*>* sentences, std::vector<u32>* offs) {
+void sentencify(char* ntxt, std::vector<char*>* sentences) {
 	char* w, *we, *wn;
 	bool seen_alpha = false;
 
@@ -139,8 +140,6 @@ void sentencify(char* ntxt, std::vector<char*>* sentences, std::vector<u32>* off
 			if (w != wn && seen_alpha) {
 				if (not_null(sentences))
 					sentences->push_back(w);
-				if (not_null(offs))
-					offs->push_back(w - ntxt);
 			}
 			w = wn + 1;
 			while (w < we && isspace(*w))
@@ -155,31 +154,56 @@ void sentencify(char* ntxt, std::vector<char*>* sentences, std::vector<u32>* off
 	if (seen_alpha) {
 		if (not_null(sentences))
 			sentences->push_back(w);
-		if (not_null(offs))
-			offs->push_back(w - ntxt);
 	}
+}
 
-	if (sentences != nullptr && offs != nullptr)
-		ship_assert(sentences->size() == offs->size());
+static bool ends_in_punc(const char* str) {
+	const char *w;
+	w = str + strlen(str) - 1;
+	while (w >= str) {
+		if (isspace(*w) || *w == '\'' || *w == '\"') {
+			--w;
+			continue;
+		}
+		if (strchr(".?!;|[]{}", *w) != nullptr)
+			return true;
+		break;
+	}
+	return false;
 }
 
 void BertEmbeddingManager::embedding_for_text(const std::string& str, std::vector<LMEmbedding*>& le, std::vector<u32>& offs) {
-	/* We break the text into sentences, and then create an LMEmbedding for each sentence. */
+	/* We break the text into blocks/chunks of n_sentence sentences, and then create an LMEmbedding for each chunk. */
 	std::vector<char*> sentences;
 	char* ntxt = normalize_string(str);
 
-	sentencify(ntxt, &sentences, &offs);
+	sentencify(ntxt, &sentences);
 
-	for (const auto* sentence : sentences) {
+	n_sentences = std::max(n_sentences, 1);
+
+	for (int i = 0; i < sentences.size(); i += n_sentences) {
+		std::string full;
+		for (int e = i; e < (i + n_sentences) && e < sentences.size(); ++e) {
+			if (e != i)
+				full += " ";
+			full += sentences[e];
+			if (!ends_in_punc(sentences[e]))
+				full += ".";
+		}
+		/* remove excess whitespace */
+		p_replace(full, "  ", " ");
+		p_replace(full, "  ", " ");
+
 		LMEmbedding* lme = new LMEmbedding;
 		lme->n_embed = embedding_dimension();
 		lme->embed_data = new float [lme->n_embed];	
 		if (save_text) {
-			lme->text = new char [strlen(sentence) + 1];
-			strcpy(lme->text, sentence);
+			lme->text = new char [full.length() + 1];
+			strcpy(lme->text, full.c_str());
 		}
-		bert_encode(model, n_threads, sentence, lme->embed_data);
+		bert_encode(model, n_threads, full.c_str(), lme->embed_data);
 		le.push_back(lme);
+		offs.push_back(sentences[i] - ntxt);
 	}
 
 	delete ntxt;
@@ -224,7 +248,8 @@ void BertEmbeddingManager::embeddings_for_folder(const std::string& path, LMEmbe
 }
 
 char* BertEmbeddingManager::normalize_string(const std::string& in_str) const {
-	// A copy of the text is made, in which newlines are converted to spaces.
+	// A copy of the text is made, in which newlines are converted to spaces. Excess whitespace is removed
+	// when concatenating sentences into embedding chunks.
 	// The bert ggml code removes accents and does some other normalizations when it processes the input text.
 	char* ret = new char[in_str.length() + 1];
 	strcpy(ret, in_str.c_str());
