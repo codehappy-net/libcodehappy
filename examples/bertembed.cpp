@@ -19,7 +19,7 @@ void print_stats(const BertEmbeddingManager& bert, LMEmbeddingFolder* lef) {
 	std::cout << "Total uncompressed size: " << (lef->count_embeddings() * bert.embedding_dimension() * sizeof(float)) + lef->count_text_bytes() << " bytes.\n";
 }
 
-void do_embedding_search(BertEmbeddingManager& bert, const std::string& search, const std::string& in_file) {
+void do_embedding_search(BertEmbeddingManager& bert, const std::string& search, const std::string& in_file, int max_matches) {
 	LMEmbeddingFolder lef;
 	std::vector<LMEmbedding*> les;
 	double score;
@@ -52,9 +52,21 @@ void do_embedding_search(BertEmbeddingManager& bert, const std::string& search, 
 			}
 		}
 	}
-	std::cout << "\nBest overall match:\n";
-	std::cout << lef.files[best_fidx]->pathname << " at offset " << lef.files[best_fidx]->offsets[best_eidx] << " with score " << best_score << ".\n";
-	std::cout << "\t" << lef.files[best_fidx]->embeds[best_eidx]->original_text() << "\n";
+
+	if (les.empty())
+		return;
+
+	LMBestMatch bm(max_matches);
+	lef.best_matches(bm, les[0]);
+	if (1 == max_matches)
+		std::cout << "\nBest overall match:\n";
+	else
+		std::cout << "\nBest overall matches:\n";
+	for (int i = 0; i < bm.n_matches; ++i) {
+		LMEmbedding* le = bm.matches[i];
+		std::cout << bm.filename[i] << " at offset " << bm.offset[i] << " with score " << bm.cos_sim[i] << ".\n";
+		std::cout << "\t" << le->original_text() << "\n";
+	}
 
 	for (LMEmbedding* le : les)
 		delete le;
@@ -75,12 +87,14 @@ void compile_folder_embeddings(BertEmbeddingManager& bert, const std::string& fo
 int app_main() {
 	ArgParse ap;
 	std::string text, folder, out_file = "bert.embeddings", in_file = "bert.embeddings", search, model = "bge-large-en-ggml-model-f16.bin";
+	int max_matches = 8;
 
 	ap.add_argument("model", type_string, "BERT architecture embedding model (default is bge-large-en)");
 	ap.add_argument("folder", type_string, "folder of text files to compile an embedding database from");
 	ap.add_argument("out", type_string, "name of the output file (default is 'bert.embeddings')");
 	ap.add_argument("in", type_string, "input embedding file; use with 'search' (default is 'bert.embeddings')");
 	ap.add_argument("search", type_string, "search string");
+	ap.add_argument("max_matches", type_int, "the number of best matches returned from the embedding search (default is 8)", &max_matches);
 	ap.ensure_args(argc, argv);
 
 	ap.value_str("folder", folder);
@@ -100,7 +114,7 @@ int app_main() {
 	if (search.empty())
 		compile_folder_embeddings(bert, folder, out_file);
 	else
-		do_embedding_search(bert, search, in_file);
+		do_embedding_search(bert, search, in_file, max_matches);
 
 	return 0;
 }

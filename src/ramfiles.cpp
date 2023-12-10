@@ -403,8 +403,7 @@ int RamFile::putc(int c)
 
 	c &= 0xff;
 
-	switch (options & RAMFILE_WRITE_OPTIONS)
-		{
+	switch (options & RAMFILE_WRITE_OPTIONS) {
 	case RAMFILE_WRITE_OVERWRITE:
 		if (likely(not_null(sp.cend) && readp < sp.cend)) {
 			*(readp) = c;
@@ -419,7 +418,7 @@ int RamFile::putc(int c)
 				return(-1);
 			readp = sp.buf + roff;
 			++readp;
-			}
+		}
 		break;
 	case RAMFILE_WRITE_APPEND:
 		// note that a write in append mode doesn't change the read pointer
@@ -435,7 +434,7 @@ int RamFile::putc(int c)
 		// TODO: implement, this is the most expensive operation the naive way, but there are ways to make this efficient
 		TBI();
 		return(1);
-		}
+	}
 
 	return(0);
 }
@@ -691,7 +690,7 @@ u32 RamFile::getu32(void) {
 i32 RamFile::get32(void) {
 	if (is_null(readp) || readp + 3 >= sp.cend)
 		return 0;
-	i32 ret = LE32_TO_CPU((*((i32*)readp)));
+	i32 ret = (i32) LE32_TO_CPU((*((i32*)readp)));
 	readp += 4;
 	return ret;
 }
@@ -707,7 +706,7 @@ u16 RamFile::getu16(void) {
 i16 RamFile::get16(void) {
 	if (is_null(readp) || readp + 1 >= sp.cend)
 		return 0;
-	i16 ret = LE16_TO_CPU((*((i16*)readp)));
+	i16 ret = (i16) LE16_TO_CPU((*((i16*)readp)));
 	readp += 2;
 	return ret;
 }
@@ -829,8 +828,10 @@ int RamFile::putstring(const std::string& s) {
 }
 
 int RamFile::putstring(const char* s) {
+	if (truth(options & RAMFILE_READONLY))
+		return(1);
 	if (is_null(s)) {
-		putu32(0);
+		putu32(0ul);
 		return 0;
 	}
 	u32 len = strlen(s);

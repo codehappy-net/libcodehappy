@@ -51,10 +51,31 @@ static char* end_of_ellipsis(char* wn, char* we) {
 	return w;
 }
 
-void BertEmbeddingManager::embedding_for_text(const std::string& str, std::vector<LMEmbedding*>& le, std::vector<u32>& offs) {
-	/* We break the text into sentences, and then create an LMEmbedding for each sentence. */
-	std::vector<char*> sentences;
-	char* ntxt = normalize_string(str);
+static bool check_abbrev(char* w, char* wn, char* we) {
+	const char* checks[] = { "Mr.", "Mrs.", "Ms.", "Dr.", "approx.", "etc.", "dept.", "vs.", "misc.", 
+		"apt.", "viz.", "cf.", "est.", "num.", "Ave.", "Blvd.", "St.", "Rd.", "Asst.", "Inc.", "et al.",
+		"ibid.", "Sr.", "Sra.", "Jr.", "Prof.", "Mme.", "Mmse.", "Rev.", };
+
+	for (const auto check : checks) {
+		int l = strlen(check);
+		if (wn - l + 1 < w)
+			continue;
+		if (!strncmp(wn - l + 1, check, l))
+			return true;
+	}
+
+	// check for acronyms
+	if ((wn - 2) >= w && *(wn - 2) == '.')
+		return true;
+	if ((wn - 2) >= w && isspace(*(wn - 2)) && (wn + 2) < we && *(wn + 2) == '.')
+		return true;
+
+
+	return false;
+}
+
+/*** break a C string, in place, into sentences. ***/
+void sentencify(char* ntxt, std::vector<char*>* sentences, std::vector<u32>* offs) {
 	char* w, *we, *wn;
 	bool seen_alpha = false;
 
@@ -71,7 +92,9 @@ void BertEmbeddingManager::embedding_for_text(const std::string& str, std::vecto
 
 		if (*wn == '.') {
 			char* wn2 = end_of_ellipsis(wn, we);
-			if (wn == wn2 - 1) {
+			// check for titles (Mrs., Dr., etc.), acronyms, and common abbreviations
+			bool is_abbrev = check_abbrev(w, wn, we);
+			if (wn == wn2 - 1 && !is_abbrev) {
 				// period, this is the end of a sentence
 				sentence_end = true;
 				if (isspace(*(wn + 1))) {
@@ -101,9 +124,23 @@ void BertEmbeddingManager::embedding_for_text(const std::string& str, std::vecto
 			*wn = '\000';
 			if (seen_alpha && !strncmp(w, "\" \"", 3))
 				w += 3;
+			if (seen_alpha && !strncmp(w, "\"  \"", 4))
+				w += 4;
+			if (seen_alpha && !strncmp(w, "' '", 3))
+				w += 3;
+			if (seen_alpha && !strncmp(w, "'  '", 4))
+				w += 4;
+			if (seen_alpha && !strncmp(w, ") ", 2))
+				w += 2;
+			if (seen_alpha && !strncmp(w, "'  ", 3))
+				w += 3;
+			if (seen_alpha && !strncmp(w, "' ", 2))
+				w += 2;
 			if (w != wn && seen_alpha) {
-				sentences.push_back(w);
-				offs.push_back(w - ntxt);
+				if (not_null(sentences))
+					sentences->push_back(w);
+				if (not_null(offs))
+					offs->push_back(w - ntxt);
 			}
 			w = wn + 1;
 			while (w < we && isspace(*w))
@@ -116,10 +153,22 @@ void BertEmbeddingManager::embedding_for_text(const std::string& str, std::vecto
 	}
 	// get the last sentence.
 	if (seen_alpha) {
-		sentences.push_back(w);
-		offs.push_back(w - ntxt);
+		if (not_null(sentences))
+			sentences->push_back(w);
+		if (not_null(offs))
+			offs->push_back(w - ntxt);
 	}
 
+	if (sentences != nullptr && offs != nullptr)
+		ship_assert(sentences->size() == offs->size());
+}
+
+void BertEmbeddingManager::embedding_for_text(const std::string& str, std::vector<LMEmbedding*>& le, std::vector<u32>& offs) {
+	/* We break the text into sentences, and then create an LMEmbedding for each sentence. */
+	std::vector<char*> sentences;
+	char* ntxt = normalize_string(str);
+
+	sentencify(ntxt, &sentences, &offs);
 
 	for (const auto* sentence : sentences) {
 		LMEmbedding* lme = new LMEmbedding;

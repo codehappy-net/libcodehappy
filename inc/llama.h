@@ -47,6 +47,23 @@ struct LMEmbedding {
 	char* text;		// text
 };
 
+const int MAX_EMBED_MATCHES = 64;
+
+struct LMBestMatch {
+	LMBestMatch(int max_matches = MAX_EMBED_MATCHES);
+
+	void check_match(LMEmbedding* lme, double score, const char* fname = nullptr, u32 offs = 0);
+
+	int n_matches;
+	int n_matches_max;
+	LMEmbedding* matches[MAX_EMBED_MATCHES];
+	double cos_sim[MAX_EMBED_MATCHES];
+	const char* filename[MAX_EMBED_MATCHES];
+	u32 offset[MAX_EMBED_MATCHES];
+	double min_cos_sim;
+	int i_min;
+};
+
 struct LMEmbeddingFile {
 	LMEmbeddingFile();
 	~LMEmbeddingFile();
@@ -59,6 +76,7 @@ struct LMEmbeddingFile {
 	// The return value is the index of the best match in embeds/offsets. If score is non-NULL,
 	// the cosine similarity is returned in that variable.
 	int best_match(const LMEmbedding* le, double* score = nullptr);
+	void best_matches(LMBestMatch& best_matches, const LMEmbedding* le);
 
 	void out_to_ramfile(RamFile* rf);
 	void in_from_ramfile(RamFile* rf);
@@ -80,6 +98,7 @@ struct LMEmbeddingFolder {
 	int count_embeddings() const;
 	int count_text_bytes() const;
 	int best_match(int file_idx, const LMEmbedding* le, double* score = nullptr);
+	void best_matches(LMBestMatch& best_matches, const LMEmbedding* le);
 };
 
 struct ChatEntry {

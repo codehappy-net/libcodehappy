@@ -1401,8 +1401,8 @@ void LMEmbedding::free() {
 double LMEmbedding::cosine_similarity(const LMEmbedding* le) const {
 	double cos_val;
 
-	NOT_NULL_OR_RETURN(embed_data, 0.0);
-	ship_assert(!is_null(le));
+	NOT_NULL_OR_RETURN(embed_data, -2.0);
+	NOT_NULL_OR_RETURN(le, -2.0);
 
 	cos_val = dot_product(le) / (magnitude() * le->magnitude());
 	return cos_val;
@@ -1471,6 +1471,54 @@ std::string LMEmbedding::original_text() const {
 	return ret;
 }
 
+LMBestMatch::LMBestMatch(int max_matches) {
+	n_matches = 0;
+	n_matches_max = std::min(max_matches, MAX_EMBED_MATCHES);
+	n_matches_max = std::max(n_matches_max, 1);
+	for (int i = 0; i < MAX_EMBED_MATCHES; ++i) {
+		matches[i] = nullptr;
+		cos_sim[i] = -2.0;
+		filename[i] = nullptr;
+		offset[i] = 0UL;
+	}
+	min_cos_sim = 2.0;
+	i_min = 0;
+}
+
+void LMBestMatch::check_match(LMEmbedding* lme, double score, const char* fname, u32 offs) {
+	if (n_matches == n_matches_max && score <= min_cos_sim) {
+		return;
+	}
+
+	if (n_matches < n_matches_max) {
+		matches[n_matches] = lme;
+		cos_sim[n_matches] = score;
+		filename[n_matches] = fname;
+		offset[n_matches] = offs;
+		if (score < min_cos_sim) {
+			min_cos_sim = score;
+			i_min = n_matches;
+		}
+		n_matches++;
+		return;
+	}
+
+	// the match array is full, but this has a better cosine similarity than the worst, so replace that.
+	matches[i_min] = lme;
+	cos_sim[i_min] = score;
+	filename[i_min] = fname;
+	offset[i_min] = offs;
+	i_min = 0;
+	min_cos_sim = cos_sim[0];
+	for (int e = 1; e < n_matches; ++e) {
+		if (cos_sim[e] < min_cos_sim) {
+			min_cos_sim = cos_sim[e];
+			i_min = e;
+		}
+	}
+	
+}
+
 LMEmbeddingFile::LMEmbeddingFile() {
 }
 
@@ -1524,6 +1572,13 @@ int LMEmbeddingFile::best_match(const LMEmbedding* le, double* score) {
 	if (score != nullptr)
 		*score = best_sc;
 	return iret;
+}
+
+void LMEmbeddingFile::best_matches(LMBestMatch& best_matches, const LMEmbedding* le) {
+	for (int e = 0; e < embeds.size(); ++e) {
+		double sc = embeds[e]->cosine_similarity(le);
+		best_matches.check_match(embeds[e], sc, pathname.c_str(), offsets[e]);
+	}
 }
 
 int LMEmbeddingFile::count_embeddings() const {
@@ -1591,6 +1646,12 @@ int LMEmbeddingFolder::best_match(int file_idx, const LMEmbedding* le, double* s
 	if (file_idx < 0 || file_idx >= files.size())
 		return -1;
 	return files[file_idx]->best_match(le, score);
+}
+
+void LMEmbeddingFolder::best_matches(LMBestMatch& best_matches, const LMEmbedding* le) {
+	for (auto file : files) {
+		file->best_matches(best_matches, le);
+	}
 }
 
 LlamaDefaults::LlamaDefaults() {

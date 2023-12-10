@@ -51,5 +51,11 @@ private:
 	bool save_text;
 };
 
+/*** Break a C string, in place, into sentences. If sentences is non-null, this vector is filled with pointers
+     to the beginning of each sentence. If offs is non-null, this vector is filled with offsets to the beginning
+     of each sentence. Zero terminators are placed in the C string at the end of each sentence, so if sentences
+     and offs are both null, you should store the original length or pointer to the end of the ntxt buffer. ***/
+extern void sentencify(char* ntxt, std::vector<char*>* sentences = nullptr, std::vector<u32>* offs = nullptr);
+
 #endif  // __BERT_EMBEDDINGS_H
 /*** end bert.h ***/
