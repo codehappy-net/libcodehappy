@@ -176,6 +176,7 @@ void BertEmbeddingManager::embedding_for_text(const std::string& str, std::vecto
 	/* We break the text into blocks/chunks of n_sentence sentences, and then create an LMEmbedding for each chunk. */
 	std::vector<char*> sentences;
 	char* ntxt = normalize_string(str);
+	const int MAX_LEN = 640;
 
 	sentencify(ntxt, &sentences);
 
@@ -190,9 +191,13 @@ void BertEmbeddingManager::embedding_for_text(const std::string& str, std::vecto
 			if (!ends_in_punc(sentences[e]))
 				full += ".";
 		}
-		/* remove excess whitespace */
-		p_replace(full, "  ", " ");
-		p_replace(full, "  ", " ");
+		for (int j = 0; j < 8; ++j) {
+			p_replace(full, "  ", " ");
+		}
+
+		if (full.length() > MAX_LEN) {
+			full.erase(MAX_LEN, std::string::npos);
+		}
 
 		LMEmbedding* lme = new LMEmbedding;
 		lme->n_embed = embedding_dimension();
@@ -223,13 +228,17 @@ void BertEmbeddingManager::embeddings_for_file(const std::string& str, LMEmbeddi
 	embedding_for_text(text, lef->embeds, lef->offsets);
 }
 
-LMEmbeddingFolder* BertEmbeddingManager::embeddings_for_folder(const std::string& path) {
+LMEmbeddingFolder* BertEmbeddingManager::embeddings_for_folder(const std::string& path, const char* lef_pathname) {
 	LMEmbeddingFolder* ret = new LMEmbeddingFolder;
-	embeddings_for_folder(path, ret);
+	embeddings_for_folder(path, ret, lef_pathname);
 	return ret;
 }
 
-void BertEmbeddingManager::embeddings_for_folder(const std::string& path, LMEmbeddingFolder* lef) {
+void BertEmbeddingManager::embeddings_for_folder(const std::string& path, LMEmbeddingFolder* lef, const char* lef_pathname) {
+	if (not_null(lef_pathname) && FileExists(lef_pathname)) {
+		lef->in_from_file(lef_pathname);
+	}
+
 	DIR* di = opendir(path.c_str());
 	dirent* entry;
 
@@ -241,8 +250,17 @@ void BertEmbeddingManager::embeddings_for_folder(const std::string& path, LMEmbe
 			
 		std::string filename;
 		make_pathname(path, entry->d_name, filename);
+		if (lef->known_files.find(filename) != lef->known_files.end()) {
+			std::cout << "Skipping " << filename << ", already in embeddings file...\n";
+			continue;
+		}
 		std::cout << filename << std::endl;
 		lef->files.push_back(embeddings_for_file(filename));
+		lef->known_files.insert(filename);
+
+		if (not_null(lef_pathname)) {
+			lef->out_to_file(lef_pathname);
+		}
 	}
 	closedir(di);
 }

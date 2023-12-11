@@ -30,9 +30,12 @@ public:
 	void embeddings_for_file(const std::string& str, LMEmbeddingFile* lef);
 
 	// Create embeddings for all text files (*.txt) in a folder. As above, documents are broken into
-	// sentences.
-	LMEmbeddingFolder* embeddings_for_folder(const std::string& path);
-	void embeddings_for_folder(const std::string& path, LMEmbeddingFolder* lef);
+	// chunks of sentences.
+	// If 'lef_pathname' is non-null, the LMEmbeddingFolder contents will be initialized from that file (if it
+	// exists), and embeddings_for_folder() will save the LMEmbeddingFolder after each file's embeddings
+	// are added. This way, if a long embedding operation is stopped it can continue at the most recent file.
+	LMEmbeddingFolder* embeddings_for_folder(const std::string& path, const char* lef_pathname = nullptr);
+	void embeddings_for_folder(const std::string& path, LMEmbeddingFolder* lef, const char* lef_pathname = nullptr);
 
 	// Return the embedding dimension for the model. 
 	int embedding_dimension() const	{ NOT_NULL_OR_RETURN(model, 0); return bert_n_embd(model); }

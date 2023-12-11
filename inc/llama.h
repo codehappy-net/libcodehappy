@@ -92,9 +92,12 @@ struct LMEmbeddingFolder {
 	~LMEmbeddingFolder();
 
 	std::vector<LMEmbeddingFile*> files;
+	std::unordered_set<std::string> known_files;
 
 	void out_to_ramfile(RamFile* rf);
 	void in_from_ramfile(RamFile* rf);
+	void in_from_file(const char* path);
+	void out_to_file(const char* path);
 	void free();
 	int count_files() const;
 	int count_embeddings() const;

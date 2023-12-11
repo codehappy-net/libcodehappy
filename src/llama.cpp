@@ -1620,6 +1620,9 @@ LMEmbeddingFolder::~LMEmbeddingFolder() {
 }
 
 void LMEmbeddingFolder::out_to_ramfile(RamFile* rf) {
+	rf->put32((i32) known_files.size());
+	for (const auto& str : known_files)
+		rf->putstring(str);
 	rf->put32((i32) files.size());
 	for (auto f : files)
 		f->out_to_ramfile(rf);
@@ -1627,12 +1630,30 @@ void LMEmbeddingFolder::out_to_ramfile(RamFile* rf) {
 
 void LMEmbeddingFolder::in_from_ramfile(RamFile* rf) {
 	free();
+	i32 nkf = rf->get32();
+	for (i32 e = 0; e < nkf; ++e) {
+		std::string kf = rf->getstring();
+		known_files.insert(kf);
+	}
 	i32 nf = rf->get32();
 	for (i32 e = 0; e < nf; ++e) {
 		LMEmbeddingFile* lef = new LMEmbeddingFile;
 		lef->in_from_ramfile(rf);
 		files.push_back(lef);
 	}
+}
+
+void LMEmbeddingFolder::in_from_file(const char* path) {
+	RamFile rf(path, RAMFILE_READONLY);
+	in_from_ramfile(&rf);
+	rf.close();
+}
+
+void LMEmbeddingFolder::out_to_file(const char* path) {
+	RamFile rf(path, RAMFILE_DEFAULT_COMPRESS);
+	rf.truncate();
+	out_to_ramfile(&rf);
+	rf.close();
 }
 
 void LMEmbeddingFolder::free() {
