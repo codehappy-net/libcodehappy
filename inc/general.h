@@ -83,6 +83,11 @@
 #define NOT_NULL_OR_BREAK(ptr)			if (unlikely(is_null(ptr)))	break
 #define NOT_NULL_OR_CONTINUE(ptr)		if (unlikely(is_null(ptr)))	continue
 
+/*** if the given stream is at end-of-file, return. ***/
+#define NOT_EOF_OR_RETURN(stream, retval)	if (unlikely(stream.eof())) return (retval)
+#define NOT_EOF_OR_RETURN_VOID(stream)	if (unlikely(stream.eof())) return
+#define NOT_EOF_OR_BREAK(stream)		if (unlikely(stream.eof())) break
+
 /*** SWAP -- swaps values of x and y (that are of type t) ***/
 #ifndef SWAP
 #define SWAP(x, y, t)			do { t x__tmp = (x); (x) = (y); (y) = x__tmp; } while (0)

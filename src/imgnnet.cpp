@@ -276,20 +276,20 @@ double gray_intensity(SBitmap* bmp, int x, int y) {
 }
 
 bool file_is_text(const char* pathname) {
-	char buf[128];
+	unsigned char buf[128];
 	if (!FileExists(pathname))
 		return false;
 	u32 fl = filelen(pathname);
 	if (fl == 0)
 		return false;
 
-	/* Check the first 128 bytes of the file; if it's all printable characters, call it good. */
+	/* Check the first 128 bytes of the file; if there aren't any strange (non-whitespace) control characters, call it good. */
 	fl = std::min((unsigned long)fl, 128UL);
 	FILE* f = fopen(pathname, "rb");
 	fread(buf, 1, fl, f);
 	fclose(f);
 	for (u32 i = 0; i < fl; ++i) {
-		if (!isprint(buf[i]))
+		if (buf[i] < ' ' && !isspace(buf[i]))
 			return false;
 	}
 	return true;

@@ -448,6 +448,9 @@ private:
 #include "external/stable-diffusion/rng.h"
 #include "external/stable-diffusion/rng_philox.h"
 
+/*** Language model embeddings. ***/
+#include "lmembed.h"
+
 /*** Llama LM inference. ***/
 #include "llama.h"
 

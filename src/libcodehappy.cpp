@@ -1059,6 +1059,7 @@ bool is_codehappy_verbose() {
 #include "gpt-neox.cpp"
 #include "split.cpp"
 #include "textdataset.cpp"
+#include "lmembed.cpp"
 #include "llama.cpp"
 #include "external/stable-diffusion/stable-diffusion.cpp"
 #include "ldm.cpp"

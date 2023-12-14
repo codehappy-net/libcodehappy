@@ -23,14 +23,18 @@ void do_embedding_search(BertEmbeddingManager& bert, const std::string& search, 
 	LMEmbeddingFolder lef;
 	std::vector<LMEmbedding*> les;
 	double score;
+	// distinguish the (compressed) ramfile format from the stream by text format
+	bool is_stream = file_is_text(in_file.c_str());
 
-	lef.in_from_file(in_file.c_str());
-	print_stats(bert, &lef);
+	if (!is_stream) {
+		lef.in_from_file(in_file.c_str());
+		print_stats(bert, &lef);
+	}
 
 	les = bert.embedding_for_text(search);
 	std::cout << "Number of chunks in search string: " << les.size() << std::endl;
 
-	if (show_per_file) {
+	if (show_per_file && !is_stream) {
 		std::cout << "*** Best match by file:\n";
 		int cf = lef.count_files();
 
@@ -51,7 +55,13 @@ void do_embedding_search(BertEmbeddingManager& bert, const std::string& search, 
 
 	LMBestMatch bm(max_matches);
 	bm.set_min_cosine_similarity(min_cos);
-	lef.best_matches(bm, les[0]);
+	if (is_stream) {
+		LMEmbeddingStream lmes(in_file);
+		lmes.best_matches(bm, les[0]);
+	} else {
+		lef.best_matches(bm, les[0]);
+	}
+
 	if (1 == max_matches)
 		std::cout << "\n*** Best overall match:\n";
 	else
@@ -83,7 +93,7 @@ int app_main() {
 	ap.add_argument("model", type_string, "BERT architecture embedding model (default is bge-large-en)");
 	ap.add_argument("folder", type_string, "folder of text files to compile an embedding database from");
 	ap.add_argument("out", type_string, "name of the output file (default is 'bert.embeddings')");
-	ap.add_argument("in", type_string, "input embedding file; use with 'search' (default is 'bert.embeddings')");
+	ap.add_argument("in", type_string, "input embedding file, can be compressed or stream fmt; use with 'search' (default is 'bert.embeddings')");
 	ap.add_argument("search", type_string, "search string");
 	ap.add_argument("max_matches", type_int, "the number of best matches returned from the embedding search (default is 8)", &max_matches);
 	ap.add_argument("num_sentences", type_int, "the number of sentences in each embedding (default is 4)", &n_sentences);
