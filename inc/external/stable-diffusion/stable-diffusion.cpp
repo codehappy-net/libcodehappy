@@ -690,7 +690,55 @@ public:
         return tokens;
     }
 
+    std::vector<int> greedy_encode(std::string text) {
+	/* CMS: this tokenizer gives results more consistent with Python reference implementations.
+    	        The algorithm is simple and brute force: when a denoising step takes less than 10 s on CPU
+    	        I can worry about perf in the CLIP tokenizer... */
+	std::vector<int> ret;
+	text = whitespace_clean(text);
+	std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return std::tolower(c); });
+	const char * w = text.c_str();
+
+	forever {
+		int maxlen = 0, advance = 0, best_match = 0;
+		if (!(*w))
+			break;
+		for (const auto& ey : encoder) {
+			const char* tok = ey.first.c_str();
+			int32_t tok_id = ey.second;
+			int len = strlen(tok), len_adv;
+			bool eow = false;
+			if (strstr(tok, "</w>") != nullptr) {
+				len -= 4;
+				eow = true;
+			}
+			len_adv = len;
+			if (!strncmp(w, tok, len)) {
+				if (eow) {
+					const char * w2 = w + len;
+					if (*w2 && !isspace(*w2))
+						continue;
+					if (*w2 != 0)
+						len_adv++;
+					++len;
+				}
+				if (len > maxlen) {
+					maxlen = len;
+					advance = len_adv;
+					best_match = tok_id;
+				}
+			}
+		}
+		ship_assert(advance > 0);
+		ret.push_back(best_match);
+		w += advance;
+	}
+
+	return ret;
+    }
+
     std::vector<int> encode(std::string text) {
+        ship_assert(false);
         std::string original_text = text;
         std::vector<int32_t> bpe_tokens;
         text = whitespace_clean(text);
@@ -1295,6 +1343,7 @@ struct FrozenCLIPEmbedderWithCustomWords {
     std::pair<std::vector<int>, std::vector<float>> tokenize(std::string text,
                                                              size_t max_length = 0,
                                                              bool padding      = false) {
+#ifdef BROKEN
         auto parsed_attention = parse_prompt_attention(text);
 
         {
@@ -1345,6 +1394,36 @@ struct FrozenCLIPEmbedderWithCustomWords {
         // std::cout << std::endl;
 
         return {tokens, weights};
+    }
+#endif  // BROKEN
+
+	/* CMS: this implementation gives results more consistent with Python reference implementations. let's use this. */
+	std::vector<int> tokens;
+	std::vector<float> weights;
+
+	tokens = tokenizer.greedy_encode(text);
+	tokens.insert(tokens.begin(), BOS_TOKEN_ID);
+	if (max_length > 0) {
+		if (tokens.size() > max_length - 1) {
+			tokens.resize(max_length - 1);
+			tokens.push_back(EOS_TOKEN_ID);
+		} else {
+			tokens.push_back(EOS_TOKEN_ID);
+			if (padding) {
+				int pad_token_id = PAD_TOKEN_ID;
+				if (version == VERSION_2_x) {
+					pad_token_id = 0;
+				}
+				tokens.insert(tokens.end(), max_length - tokens.size(), pad_token_id);
+			}
+		}
+	}
+
+	for (int i = 0; i < tokens.size(); ++i) {
+	    weights.push_back(1.0);
+	}
+
+	return { tokens, weights };
     }
 };
 
