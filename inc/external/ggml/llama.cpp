@@ -10601,8 +10601,17 @@ static void llama_log_internal(ggml_log_level level, const char * format, ...) {
 }
 
 static void llama_log_callback_default(ggml_log_level level, const char * text, void * user_data) {
+#ifdef CODEHAPPY_DEBUG
     (void) level;
     (void) user_data;
     fputs(text, stderr);
     fflush(stderr);
+#else
+    // only report ggml errors
+    if (level != GGML_LOG_LEVEL_ERROR)
+        return;
+    (void) user_data;
+    fputs(text, stderr);
+    fflush(stderr);
+#endif    
 }

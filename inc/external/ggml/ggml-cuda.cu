@@ -6646,20 +6646,20 @@ void ggml_init_cublas() {
         GGML_ASSERT(g_device_count <= GGML_CUDA_MAX_DEVICES);
         int64_t total_vram = 0;
 #if defined(GGML_CUDA_FORCE_MMQ)
-        fprintf(stderr, "%s: GGML_CUDA_FORCE_MMQ:   yes\n", __func__);
+        L_FPRINTF(stderr, "%s: GGML_CUDA_FORCE_MMQ:   yes\n", __func__);
 #else
-        fprintf(stderr, "%s: GGML_CUDA_FORCE_MMQ:   no\n", __func__);
+        L_FPRINTF(stderr, "%s: GGML_CUDA_FORCE_MMQ:   no\n", __func__);
 #endif
 #if defined(CUDA_USE_TENSOR_CORES)
-        fprintf(stderr, "%s: CUDA_USE_TENSOR_CORES: yes\n", __func__);
+        L_FPRINTF(stderr, "%s: CUDA_USE_TENSOR_CORES: yes\n", __func__);
 #else
-        fprintf(stderr, "%s: CUDA_USE_TENSOR_CORES: no\n", __func__);
+        L_FPRINTF(stderr, "%s: CUDA_USE_TENSOR_CORES: no\n", __func__);
 #endif
-        fprintf(stderr, "%s: found %d " GGML_CUDA_NAME " devices:\n", __func__, g_device_count);
+        L_FPRINTF(stderr, "%s: found %d " GGML_CUDA_NAME " devices:\n", __func__, g_device_count);
         for (int id = 0; id < g_device_count; ++id) {
             cudaDeviceProp prop;
             CUDA_CHECK(cudaGetDeviceProperties(&prop, id));
-            fprintf(stderr, "  Device %d: %s, compute capability %d.%d\n", id, prop.name, prop.major, prop.minor);
+            L_FPRINTF(stderr, "  Device %d: %s, compute capability %d.%d\n", id, prop.name, prop.major, prop.minor);
 
             g_tensor_split[id] = total_vram;
             total_vram += prop.totalGlobalMem;
@@ -9204,7 +9204,7 @@ void ggml_cuda_set_main_device(const int main_device) {
         g_main_device = main_device;
         cudaDeviceProp prop;
         CUDA_CHECK(cudaGetDeviceProperties(&prop, g_main_device));
-        fprintf(stderr, "%s: using device %d (%s) as main device\n", __func__, g_main_device, prop.name);
+        L_FPRINTF(stderr, "%s: using device %d (%s) as main device\n", __func__, g_main_device, prop.name);
     }
 }
 

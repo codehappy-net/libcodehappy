@@ -1875,7 +1875,7 @@ inline static void ggml_critical_section_end(void) {
 
 void ggml_numa_init(void) {
     if (g_state.numa.n_nodes > 0) {
-        fprintf(stderr, "ggml_numa_init: NUMA already initialized\n");
+        L_FPRINTF(stderr, "ggml_numa_init: NUMA already initialized\n");
 
         return;
     }
@@ -18879,7 +18879,7 @@ struct gguf_context * gguf_init_from_file(const char * fname, struct gguf_init_p
                 (int64_t) info->ne[3];
 
             if (ne % ggml_blck_size(info->type) != 0) {
-                fprintf(stderr, "%s: tensor '%s' number of elements (%" PRId64 ") is not a multiple of block size (%d)\n",
+                L_FPRINTF(stderr, "%s: tensor '%s' number of elements (%" PRId64 ") is not a multiple of block size (%d)\n",
                         __func__, info->name.data, ne, ggml_blck_size(info->type));
                 fclose(file);
                 gguf_free(ctx);

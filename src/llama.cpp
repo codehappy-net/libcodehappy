@@ -655,6 +655,10 @@ void Llama::ensure_model_loaded() {
 
 void Llama::reset_contexts() {
 	struct llama_context_params lparams = llama_context_params_from_gpt_params(params);
+	if (ctx != nullptr)
+		llama_free(ctx);
+	if (ctx_cfg != nullptr)
+		llama_free(ctx_cfg);
 	ctx = llama_new_context_with_model(model, lparams);
 	if (params.sparams.cfg_scale != 1.f) {
 		ctx_cfg = llama_new_context_with_model(model, lparams);

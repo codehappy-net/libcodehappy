@@ -81,6 +81,7 @@ bool is_directory(const std::string& path) {
 
 #endif
 
+#if 0
 // get_num_physical_cores is copy from
 // https://github.com/ggerganov/llama.cpp/blob/master/examples/common.cpp
 // LICENSE: https://github.com/ggerganov/llama.cpp/blob/master/LICENSE
@@ -118,6 +119,7 @@ int32_t get_num_physical_cores() {
     unsigned int n_threads = std::thread::hardware_concurrency();
     return n_threads > 0 ? (n_threads <= 4 ? n_threads : n_threads / 2) : 4;
 }
+#endif
 
 std::string file_basename(const std::string& path) {
     size_t pos = path.find_last_of('/');

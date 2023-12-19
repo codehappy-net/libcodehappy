@@ -259,6 +259,12 @@
 #define GGML_UNREACHABLE() ((void) 0)
 #endif
 
+#ifdef CODEHAPPY_DEBUG
+#define L_FPRINTF(...)		fprintf(__VA_ARGS__)
+#else
+#define L_FPRINTF(...)
+#endif
+
 // used to copy the number of elements and stride in bytes of tensors into local variables.
 // main purpose is to reduce code duplication and improve readability.
 //
