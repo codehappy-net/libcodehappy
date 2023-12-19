@@ -32,9 +32,9 @@ const std::string sd_schedule_names[sd_scheduler_count] = {
 
 static const std::string sd_default_model_names[2] = {
     // based on SD 1.5
-    "puzzlebox-v2e14.gguf",
+    "puzzlebox-v2e14.ckpt",
     // based on SD 2.1
-    "puzzlebox-v3e5.gguf",
+    "puzzlebox-v3e5.ckpt",
 };
 
 SDServer sd_server;
@@ -196,11 +196,11 @@ static ggml_type wtype_from_path(const std::string& path, ggml_type wtype) {
 		// unknown from the file name, let's take a guess from the file size.
 		u64 fl = flength_64(path.c_str());
 		ret = GGML_TYPE_F32;
-		if (fl < 5000000000ULL)
+		if (fl < 4000000000ULL)
 			ret = GGML_TYPE_F16;
-		if (fl < 3000000000ULL)
+		if (fl < 2000000000ULL)
 			ret = GGML_TYPE_Q8_0;
-		if (fl < 1500000000ULL)
+		if (fl < 1300000000ULL)
 			ret = GGML_TYPE_Q4_0;
 	}
 
@@ -218,21 +218,21 @@ bool SDServer::load_from_file(const std::string& path, ggml_type wtype) {
 
 bool SDServer::load_default_model(int sd_version, bool download_if_missing) {
 	std::string URI;
-	bool default_exists[2], check_gguf = false;
+	bool default_exists[2], check_ckpt = false;
 
 	default_exists[0] = FileExists(sd_default_model_names[0]);
 	default_exists[1] = FileExists(sd_default_model_names[1]);
 	if ((sd_version == 0 && !default_exists[0] && !default_exists[1]) ||
 	    (sd_version == 1 && !default_exists[0]) ||
 	    (sd_version == 2 && !default_exists[1]))
-		check_gguf = true;
+		check_ckpt = true;
 
-	if (check_gguf) {
-		// look for a .gguf model in the current directory
+	if (check_ckpt) {
+		// look for a .ckpt model in the current directory
 		DIR* di = opendir(".");
 		dirent* entry;
 		while (entry = readdir(di)) {
-			if (strstr(entry->d_name, ".gguf") != nullptr) {
+			if (strstr(entry->d_name, ".ckpt") != nullptr) {
 				if (load_from_file(entry->d_name)) {
 					closedir(di);
 					return true;

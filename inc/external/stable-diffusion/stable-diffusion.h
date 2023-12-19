@@ -1,9 +1,10 @@
 #ifndef __STABLE_DIFFUSION_H__
 #define __STABLE_DIFFUSION_H__
 
-#include <memory>
 #include <string>
 #include <vector>
+#include <memory>
+#include "external/ggml/ggml.h"
 
 enum RNGType {
     STD_DEFAULT_RNG,
@@ -39,13 +40,16 @@ public:
     StableDiffusion(int n_threads                = -1,
                     bool vae_decode_only         = false,
                     std::string taesd_path       = "",
+                    std::string esrgan_path      = "",
                     bool free_params_immediately = false,
+                    bool vae_tiling              = false,
                     std::string lora_model_dir   = "",
                     RNGType rng_type             = STD_DEFAULT_RNG);
     bool load_from_file(const std::string& model_path,
                         const std::string& vae_path,
                         ggml_type wtype,
-                        Schedule d = DEFAULT);
+                        Schedule d = DEFAULT,
+                        int clip_skip = -1);
     std::vector<uint8_t*> txt2img(
         std::string prompt,
         std::string negative_prompt,
