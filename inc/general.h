@@ -140,15 +140,9 @@
 #define	EMPTY_STR(str)	(is_null(str) || (str)[0] == 0)
 #endif
 
-/*** documents that falling through is intended ***/
-#define	fallthrough
-
 /*** max_int() and min_int() ***/
 #define	max_int(x, y)	(((x) > (y)) ? (x) : (y))
 #define min_int(x, y)	(((x) < (y)) ? (x) : (y))
-
-/*** starts_with(): string starts-with operation ***/
-#define	starts_with(str, pfx)	(strncmp((str), (pfx), strlen(pfx)) == 0)
 
 /*** is_between (inclusive between) ***/
 #ifndef is_between

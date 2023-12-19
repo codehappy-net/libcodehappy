@@ -16,11 +16,13 @@ gcc -I. -g -std=c11 $GGML_GCC_ARGS $CUDA_INC_DIRS -c inc/external/ggml/ggml.c -o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/llama.cpp -o llama.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/common.cpp -o common.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/console.cpp -o console.o
+g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/build-info.cpp -o build-info.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/grammar-parser.cpp -o grammar-parser.o
 gcc -I. -g -std=c11 $GGML_GCC_ARGS $CUDA_INC_DIRS -c -o k_quants.o inc/external/ggml/k_quants.c
 nvcc --forward-unknown-to-host-compiler -use_fast_math -arch=native -DGGML_CUDA_DMMV_X=32 -DGGML_CUDA_MMV_Y=1 -DK_QUANTS_PER_ITERATION=2 -DGGML_CUDA_MMQ_Y=64 -I. -I./examples -std=c++11 -fPIC -DNDEBUG -Wall -Wextra -Wpedantic -Wcast-qual -Wno-unused-function -Wno-multichar -pthread -march=native -mtune=native -DGGML_USE_K_QUANTS -DGGML_USE_CUBLAS $CUDA_INC_DIRS -Wno-pedantic -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -g -c inc/external/ggml/ggml-cuda.cu -o ggml-cuda.o
 gcc -I. -g -std=c11 $GGML_GCC_ARGS $CUDA_INC_DIRS -c inc/external/ggml/ggml-alloc.c -o ggml-alloc.o
 gcc -I. -g -std=c11 $GGML_GCC_ARGS $CUDA_INC_DIRS -c inc/external/ggml/ggml-backend.c -o ggml-backend.o
+gcc -I. -g -std=c11 $GGML_GCC_ARGS $CUDA_INC_DIRS -c inc/external/ggml/ggml-quants.c -o ggml-quants.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/sampling.cpp -o sampling.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/train.cpp -o train.o
 
@@ -34,7 +36,7 @@ cp embed_d.o bin
 fi
 
 echo "*** Build the C++ library (nice single file build)"
-g++ -std=c++11 -g -c -Iinc -Wno-unused-result -DCODEHAPPY_NATIVE -DCODEHAPPY_CUDA -DALL_FONTS src/libcodehappy.cpp -o libcodehappy.o
+g++ -std=c++11 -g -c -Iinc -Wno-unused-result -DCODEHAPPY_NATIVE -DCODEHAPPY_CUDA -DALL_FONTS -Wno-deprecated-declarations src/libcodehappy.cpp -o libcodehappy.o
 
 echo "*** Create the library archive"
 gcc-ar rcs bin/libcodehappycudad.a *.o
@@ -48,6 +50,7 @@ g++ -g -m64 llamatok.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o  llamatok
 g++ -g -m64 llamagen.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o  llamagen
 g++ -g -m64 chat.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o  chat
 g++ -g -m64 llamaembed.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o llamaembed
+g++ -g -m64 sd.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o sd-cuda
 
 echo "*** Cleanup"
 rm *.o

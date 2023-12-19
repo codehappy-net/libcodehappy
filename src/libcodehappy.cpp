@@ -970,6 +970,7 @@ bool is_codehappy_verbose() {
 #include "bits.cpp"
 #include "unicode.cpp"
 #include "scratchpad.cpp"
+#include "external/miniz.h"
 #include "rand.cpp"
 #include "misc.cpp"
 #include "files.cpp"
@@ -1048,7 +1049,6 @@ bool is_codehappy_verbose() {
 #ifdef INCLUDE_EMBED
 #include "embed.cpp"
 #endif
-#include "external/miniz.cpp"
 #include "pifunc.cpp"
 #include "genetic.cpp"
 #include "invfn.cpp"
@@ -1062,6 +1062,9 @@ bool is_codehappy_verbose() {
 #include "lmembed.cpp"
 #include "llama.cpp"
 #include "external/stable-diffusion/stable-diffusion.cpp"
+#include "external/stable-diffusion/util.cpp"
+#include "external/stable-diffusion/model.cpp"
+#include "external/stable-diffusion/zip.c"
 #include "ldm.cpp"
 #include "external/bert.cpp"
 #include "bert.cpp"

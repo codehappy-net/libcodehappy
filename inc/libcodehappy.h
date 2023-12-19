@@ -389,11 +389,6 @@ private:
 /*** Image processing neural network training, evaluation, and modeling functions. ***/
 #include "imgnnet.h"
 
-/*** ZIP archive support, zlib inflate/deflate compression, and supporting methods. ***/
-#define MINIZ_HEADER_FILE_ONLY
-#include "external/miniz.cpp"
-#undef  MINIZ_HEADER_FILE_ONLY
-
 /*** The pi function, and nth_prime(), next_prime(), previous_prime(). ***/
 #include "pifunc.h"
 
@@ -438,15 +433,19 @@ private:
 #define LLAMA_API_INTERNAL
 #include "external/ggml/common.h"
 #include "external/ggml/llama.h"
-#include "external/ggml/build-info.h"
 #include "external/ggml/grammar-parser.h"
 #include "external/ggml/sampling.h"
 #include "external/ggml/train.h"
 
 /*** Stable Diffusion inference in ggml ***/
+#ifdef CODEHAPPY_CUDA
+#define SD_USE_CUBLAS
+#endif
 #include "external/stable-diffusion/stable-diffusion.h"
 #include "external/stable-diffusion/rng.h"
 #include "external/stable-diffusion/rng_philox.h"
+#include "external/stable-diffusion/model.h"
+#include "external/stable-diffusion/util.h"
 
 /*** Language model embeddings. ***/
 #include "lmembed.h"

@@ -733,98 +733,6 @@ u64 hash_FNV1a(const void* data, u32 data_size) {
 	return(hash);
 }
 
-static const int xorprimes[] =
-	{
-       39139,  39157,  39161,  39163,  39181,  39191,  39199,  39209,  39217,  39227, 
-       39229,  39233,  39239,  39241,  39251,  39293,  39301,  39313,  39317,  39323, 
-       39341,  39343,  39359,  39367,  39371,  39373,  39383,  39397,  39409,  39419, 
-       39439,  39443,  39451,  39461,  39499,  39503,  39509,  39511,  39521,  39541, 
-       39551,  39563,  39569,  39581,  39607,  39619,  39623,  39631,  39659,  39667, 
-        8933,   8941,   8951,   8963,   8969,   8971,   8999,   9001,   9007,   9011, 
-        9013,   9029,   9041,   9043,   9049,   9059,   9067,   9091,   9103,   9109, 
-        9127,   9133,   9137,   9151,   9157,   9161,   9173,   9181,   9187,   9199, 
-        9203,   9209,   9221,   9227,   9239,   9241,   9257,   9277,   9281,   9283, 
-        9293,   9311,   9319,   9323,   9337,   9341,   9343,   9349,   9371,   9377, 
-       24317,  24329,  24337,  24359,  24371,  24373,  24379,  24391,  24407,  24413, 
-       24419,  24421,  24439,  24443,  24469,  24473,  24481,  24499,  24509,  24517, 
-       24527,  24533,  24547,  24551,  24571,  24593,  24611,  24623,  24631,  24659, 
-       53129,  53147,  53149,  53161,  53171,  53173,  53189,  53197,  53201,  53231, 
-       53233,  53239,  53267,  53269,  53279,  53281,  53299,  53309,  53323,  53327, 
-       53353,  53359,  53377,  53381,  53401,  53407,  53411,  53419,  53437,  53441, 
-       53453,  53479,  53503,  53507,  53527,  53549,  53551,  53569,  53591,  53593, 
-       53597,  53609,  53611,  53617,  53623,  53629,  53633,  53639,  53653,  53657, 
-       42461,  42463,  42467,  42473,  42487,  42491,  42499,  42509,  42533,  42557, 
-       42569,  42571,  42577,  42589,  42611,  42641,  42643,  42649,  42667,  42677, 
-       42683,  42689,  42697,  42701,  42703,  42709,  42719,  42727,  42737,  42743, 
-       42751,  42767,  42773,  42787,  42793,  42797,  42821,  42829,  42839,  42841, 
-       40289,  40343,  40351,  40357,  40361,  40387,  40423,  40427,  40429,  40433, 
-       40459,  40471,  40483,  40487,  40493,  40499,  40507,  40519,  40529,  40531, 
-       40543,  40559,  40577,  40583,  40591,  40597,  40609,  40627,  40637,  40639, 
-       40693,  40697,  40699,  40709,  40739,  40751,  40759,  40763,  40771,  40787, 
-       17203,  17207,  17209,  17231,  17239,  17257,  17291,  17293,  17299,  17317, 
-       17321,  17327,  17333,  17341,  17351,  17359,  17377,  17383,  17387,  17389, 
-       17393,  17401,  17417,  17419,  17431,  17443,  17449,  17467,  17471,  17477, 
-       17483,  17489,  17491,  17497,  17509,  17519,  17539,  17551,  17569,  17573, 
-       17579,  17581,  17597,  17599,  17609,  17623,  17627,  17657,  17659,  17669 
-};
-
-/*** Reversable obfuscation for a (small, 9-bit) integer. ***/
-int Obfuscate(int fid) {
-	int oid;
-	int x;
-	int np;
-
-	np = sizeof(xorprimes) / sizeof(int);
-
-	// in the low word, lowest 7 bits are total garbage, the value is contained in the high 9 bits
-	// this is then XORed with a random prime number from the array above
-	// the high word contains the index into the array for the XOR prime used
-
-	oid = (fid << 7) + (randint() & 127);
-	x = randint() % np;
-	oid ^= xorprimes[x];
-	oid += (x << 16);
-
-	return(oid);
-}
-
-int Unobfuscate(int ofid) {
-	// inverse of the above operation.
-	int x;
-
-	x = (ofid >> 16);
-	ofid &= 0xffff;
-	ofid ^= xorprimes[x];
-	ofid >>= 7;
-
-	return(ofid) ;
-}
-
-int Obfuscate16(int id) {
-	int oid;
-	int x;
-	int np;
-
-	np = sizeof(xorprimes) / sizeof(int);
-
-	x = randint() % np;
-	oid = id;
-	oid ^= xorprimes[x];
-	oid += (x << 16);
-
-	return(oid);
-}
-
-int Unobfuscate16(int oid) {
-	int x;
-
-	x = (oid >> 16);
-	oid &= 0xffff;
-	oid ^= xorprimes[x];
-
-	return(oid) ;
-}
-
 /*** Compare two blocks of memory without short-circuiting. Useful if you want to compare
 	a password or key (e.g.) but do not want to leak information about the comparison by
 	taking a different amount of time depending on the number of leading bytes that match. ***/
@@ -1006,6 +914,10 @@ const char* next_of_three(const char* w, char c1, char c2, char c3) {
 		++w;
 	}
 	return nullptr;
+}
+
+bool starts_with(const char* str, const char* pfx) {
+	return (strncmp((str), (pfx), strlen(pfx)) == 0);
 }
 
 // end misc.cpp

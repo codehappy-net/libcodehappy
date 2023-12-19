@@ -2,14 +2,8 @@
 #define __STABLE_DIFFUSION_H__
 
 #include <memory>
+#include <string>
 #include <vector>
-
-enum SDLogLevel {
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR
-};
 
 enum RNGType {
     STD_DEFAULT_RNG,
@@ -24,6 +18,7 @@ enum SampleMethod {
     DPMPP2S_A,
     DPMPP2M,
     DPMPP2Mv2,
+    LCM,
     N_SAMPLE_METHODS
 };
 
@@ -37,28 +32,35 @@ enum Schedule {
 class StableDiffusionGGML;
 
 class StableDiffusion {
-   private:
+private:
     std::shared_ptr<StableDiffusionGGML> sd;
 
-   public:
-    StableDiffusion(int n_threads = -1,
-                    bool vae_decode_only = false,
+public:
+    StableDiffusion(int n_threads                = -1,
+                    bool vae_decode_only         = false,
+                    std::string taesd_path       = "",
                     bool free_params_immediately = false,
-                    RNGType rng_type = STD_DEFAULT_RNG);
-    bool load_from_file(const std::string& file_path, Schedule d = DEFAULT);
-    std::vector<uint8_t> txt2img(
-        const std::string& prompt,
-        const std::string& negative_prompt,
+                    std::string lora_model_dir   = "",
+                    RNGType rng_type             = STD_DEFAULT_RNG);
+    bool load_from_file(const std::string& model_path,
+                        const std::string& vae_path,
+                        ggml_type wtype,
+                        Schedule d = DEFAULT);
+    std::vector<uint8_t*> txt2img(
+        std::string prompt,
+        std::string negative_prompt,
         float cfg_scale,
         int width,
         int height,
         SampleMethod sample_method,
         int sample_steps,
-        int64_t seed);
-    std::vector<uint8_t> img2img(
-        const std::vector<uint8_t>& init_img,
-        const std::string& prompt,
-        const std::string& negative_prompt,
+        int64_t seed,
+        int batch_count);
+
+    std::vector<uint8_t*> img2img(
+        const uint8_t* init_img_data,
+        std::string prompt,
+        std::string negative_prompt,
         float cfg_scale,
         int width,
         int height,
@@ -68,7 +70,6 @@ class StableDiffusion {
         int64_t seed);
 };
 
-void set_sd_log_level(SDLogLevel level);
 std::string sd_get_system_info();
 
 #endif  // __STABLE_DIFFUSION_H__

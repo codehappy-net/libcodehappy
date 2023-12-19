@@ -13,10 +13,12 @@ gcc -I. -g -std=c11 $GGML_GCC_ARGS -c inc/external/ggml/ggml.c -o ggml.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/llama.cpp -o llama.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/common.cpp -o common.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/console.cpp -o console.o
+g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/build-info.cpp -o build-info.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/grammar-parser.cpp -o grammar-parser.o
 gcc -I. -g -std=c11 $GGML_GCC_ARGS -c -o k_quants.o inc/external/ggml/k_quants.c
 gcc -I. -g -std=c11 $GGML_GCC_ARGS -c inc/external/ggml/ggml-alloc.c -o ggml-alloc.o
 gcc -I. -g -std=c11 $GGML_GCC_ARGS -c inc/external/ggml/ggml-backend.c -o ggml-backend.o
+gcc -I. -g -std=c11 $GGML_GCC_ARGS -c inc/external/ggml/ggml-quants.c -o ggml-quants.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/sampling.cpp -o sampling.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/train.cpp -o train.o
 
@@ -30,7 +32,7 @@ cp embed_d.o bin
 fi
 
 echo "*** Build the C++ library (nice single file build)"
-g++ -std=c++11 -g -m64 -c -Iinc -Wno-unused-result -DCODEHAPPY_NATIVE -DALL_FONTS src/libcodehappy.cpp -o libcodehappy.o
+g++ -std=c++11 -g -m64 -c -Iinc -Wno-unused-result -DCODEHAPPY_NATIVE -DALL_FONTS -Wno-deprecated-declarations src/libcodehappy.cpp -o libcodehappy.o
 
 echo "*** Create the library archive"
 gcc-ar rcs bin/libcodehappyd.a *.o

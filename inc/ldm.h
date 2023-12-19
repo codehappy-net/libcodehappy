@@ -14,8 +14,8 @@
 #define __LDM_H__
 
 enum SDSamplerType {
-	sd_euler_ancestral = 0, sd_euler, sd_heun, sd_dpm2, sd_dpmpp2sa, sd_dpmpp2m, sd_dpmpp2mv2,
-	sd_max_sampler_valid = sd_dpmpp2mv2
+	sd_euler_ancestral = 0, sd_euler, sd_heun, sd_dpm2, sd_dpmpp2sa, sd_dpmpp2m, sd_dpmpp2mv2, sd_lcm,
+	sd_max_sampler_valid = sd_lcm
 };
 
 enum SDSchedulerType {
@@ -38,15 +38,16 @@ public:
 	/* Initial images used for img2img must have dimensions divisible by 64. You can use the helper function
 	   stretch_for_img2img to automatically resize images to the next largest legal size for img2img use. */
 
-	/* generate an image using a text prompt as conditioning. */
-	SBitmap* txt2img(const std::string& prompt,
+	/* generate a batch of images using a text prompt as conditioning. */
+	SBitmap** txt2img(const std::string& prompt,
 	                 const std::string& neg_prompt = default_neg_prompt,
 	                 u32 w = 512,
 	                 u32 h = 512,
 	                 double cfg_scale = 7.0,
 	                 i64 rng_seed = -1ll,
 	                 double variation_weight = 0.0,
-	                 i64* seed_return = nullptr);
+	                 i64* seed_return = nullptr,
+	                 int batch_count = 1);
 
 	/* generate an interpolated image, between two prompts and noise seeds, by spherical linear interpolation ('slerping').
 	   these can do morphs and all kinds of interesting vfx. v is the parameter [0.0, 1.0]: 0.0 fully first image, 1.0 fully the second. */
@@ -81,8 +82,8 @@ public:
 	/* TBI: generate a sequence of images with increasing CFG (classifier-free guidance scale) for fixed noise and text input
 	   conditioning. Because this is a kind of thing normal people might want to do. */
 
-	/* generate an image using an input image as conditioning. */
-	SBitmap* img2img(SBitmap* init_img,
+	/* generate a batch of images using an input image as conditioning. */
+	SBitmap** img2img(SBitmap* init_img,
 	                 double img_strength,
 	                 const std::string& prompt,
 	                 const std::string& neg_prompt = default_neg_prompt,
@@ -92,8 +93,8 @@ public:
 	                 i64* seed_return = nullptr);
 
 
-	/* load a Stable Diffusion model (1.x or 2.x) from the specified path. Returns true on success. */
-	bool load_from_file(const std::string& path);
+	/* load a Stable Diffusion model (1.x, 2.x, XL) from the specified path using the specified quantization. Returns true on success. */
+	bool load_from_file(const std::string& path, ggml_type wtype = GGML_TYPE_UNK);
 
 	/* attempt to load a default SD model of the given version (1 or 2, 0 will search for 2 then 1); if not available, .gguf
 	   files in the current directory are checked, if those aren't available, a model can be downloaded from the internet
@@ -127,6 +128,7 @@ private:
 
 	/* ggml format model (you can use the Python script by leejet in /inc/external/stable-diffusion/models to convert
 	   your own checkpoints, if you like) */
+	// Note that as of 12/2023 the stable-diffusion library supports .ckpt and .safetensors checkpoints!
 	StableDiffusion* sd_model;
 
 	std::string model_path;
@@ -141,17 +143,22 @@ private:
 /* the default Stable Diffusion server. */
 extern SDServer sd_server;
 
-const int sd_sampler_count = 7;
-const int sd_scheduler_count = 3;
+const int sd_sampler_count = int(sd_max_sampler_valid) + 1;
+const int sd_scheduler_count = int(sd_max_scheduler_valid) + 1;
 
 /* string names for the sampler or schedulers */
 extern const std::string sd_sampler_names[sd_sampler_count];
 extern const std::string sd_schedule_names[sd_scheduler_count];
 
-/* helper function: create an SBitmap from a vector of u8 intensities */
-extern SBitmap* bmp_from_vecu8(const std::vector<uint8_t>& invec, u32 w, u32 h);
+/* helper function: create SBitmaps from a vector of u8 intensities */
+extern SBitmap** bmps_from_vecu8(const std::vector<uint8_t*>& invec, u32 w, u32 h);
 /* ...and the reverse operation */
-extern void vecu8_from_bmp(std::vector<uint8_t>& outvec, SBitmap* bmp);
+extern void vecu8_from_bmp(std::vector<uint8_t*>& outvec, SBitmap** bmp, int n_imgs);
+
+/* single-image versions of the above */
+extern SBitmap* single_bmp_from_u8array(uint8_t* data, u32 w, u32 h);
+extern uint8_t* u8array_from_bmp(SBitmap* bmp);
+
 
 /* Stretches an image for img2img: the first returns a new bitmap with the stretched content, while the second
    replaces the original bitmap with its stretched version.
@@ -160,6 +167,9 @@ extern void vecu8_from_bmp(std::vector<uint8_t>& outvec, SBitmap* bmp);
    stretch_for_img2img() returns a simple copy of bmp. */
 extern SBitmap* stretch_for_img2img(SBitmap* bmp);
 extern void stretch_for_img2img_replace(SBitmap* bmp);
+
+/* helper for freeing all SBitmaps from a batch */
+extern void free_batch_bmps(SBitmap** bmps, int n_imgs);
 
 /* are an image's dimensions legal for img2img? */
 extern bool legal_img2img(SBitmap* bmp);

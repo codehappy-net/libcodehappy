@@ -99,12 +99,6 @@ extern bool yes_or_no(const char* prompt);
 /*** A hashing/fingerprinting function. Based on IEEE POSIX P1003.2. ***/
 u64 hash_FNV1a(const void* data, u32 data_size);
 
-/*** Reversable obfuscation for a (9-bit or 16-bit) integer. ***/
-extern int Obfuscate(int fid);
-extern int Unobfuscate(int ofid);
-extern int Obfuscate16(int id);
-extern int Unobfuscate16(int oid);
-
 /*** Compare two blocks of memory without short-circuiting. Useful if you want to compare
 	a password or key (e.g.) but do not want to leak information about the comparison by
 	taking a different amount of time depending on the number of leading bytes that match. ***/
@@ -129,6 +123,9 @@ extern void p_replace(std::string& p, const std::string& rw, const std::string& 
 /* Find the next of two (or three) characters, starting from "w". */
 extern const char* next_of_two(const char* w, char c1, char c2);
 extern const char* next_of_three(const char* w, char c1, char c2, char c3);
+
+/*** starts_with() moved to a function, due to a conflict with leejet's Stable Diffusion library. ***/
+extern bool starts_with(const char* str, const char* pfx);
 
 #endif  // MISC_H
 /* end misc.h */

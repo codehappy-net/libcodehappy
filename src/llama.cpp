@@ -186,7 +186,6 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	model = nullptr;
 	ctx = nullptr;
 	ctx_cfg = nullptr;
-	grammar = nullptr;
 	guidance_offset = 0;
 	original_prompt_len = 0;
 	keep_tok = 0;
@@ -662,52 +661,6 @@ void Llama::reset_contexts() {
 	}
 }
 
-void Llama::set_grammar(const std::string& grammar_str) {
-	clear_grammar();
-	grammar_s = grammar_str;
-}
-
-void Llama::set_grammar_from_file(const std::string& pathname) {
-	std::string grammar_str = string_from_text_file(pathname);
-	set_grammar(grammar_str);
-}
-
-void Llama::ensure_grammar() {
-	if (grammar_s.empty())
-		return;
-	if (grammar != nullptr) {
-		llama_grammar_free(grammar);
-		grammar = nullptr;
-	}
-
-	grammar_parser::parse_state parsed_grammar;
-	
-	parsed_grammar = grammar_parser::parse(grammar_s.c_str());
-	if (parsed_grammar.rules.empty()) {
-		return;
-	}
-
-	grammar_parser::print_grammar(stderr, parsed_grammar);
-        {
-            auto it = params.sparams.logit_bias.find(llama_token_eos(ctx));
-            if (it != params.sparams.logit_bias.end() && it->second == -INFINITY) {
-                codehappy_cerr << "warning: EOS token is disabled, which will cause most grammars to fail\n";
-            }
-        }
-
-	std::vector<const llama_grammar_element *> grammar_rules(parsed_grammar.c_rules());
-        grammar = llama_grammar_init(grammar_rules.data(), grammar_rules.size(), parsed_grammar.symbol_ids.at("root"));
-}
-
-
-void Llama::clear_grammar() {
-	if (grammar != nullptr) {
-		llama_grammar_free(grammar);
-		grammar = nullptr;
-	}
-	grammar_s.clear();
-}
-
 int Llama::tokenize(const std::string& str, std::vector<llama_token>& out, bool add_bos, u32 max_tokens) {
 	int ret;
 	ensure_model_loaded();
@@ -898,9 +851,8 @@ void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, Llama
 	std::vector<llama_token> embd_guidance;
 
 	ensure_model_loaded();
-	ensure_grammar();
-	if (insert_bos && (embd_inp.empty() || embd_inp[0] != llama_token_bos(ctx))) {
-		embd_inp.insert(embd_inp.begin(), llama_token_bos(ctx));
+	if (insert_bos && (embd_inp.empty() || embd_inp[0] != llama_token_bos(model))) {
+		embd_inp.insert(embd_inp.begin(), llama_token_bos(model));
 	}
 	if (embd_inp.size() > nctx) {
 		embd_inp.erase(embd_inp.begin(), embd_inp.begin() + embd_inp.size() - nctx);
@@ -989,7 +941,7 @@ void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, Llama
 		toks_out.push_back(id);
 		embd_inp.push_back(id);
 		session_tok.push_back(id);
-		if (id == llama_token_eos(ctx))
+		if (id == llama_token_eos(model))
 			break;
 		if (echo) {
 			fprintf(stdout, "%s", llama_token_to_piece(ctx, id).c_str());
@@ -1013,7 +965,7 @@ bool Llama::remove_stop_string(std::vector<llama_token>& toks) {
 
 	if (!is_null(w)) {
 		if (remove_stop_str) {
-			bool needs_bos = (toks[0] == llama_token_bos(ctx));
+			bool needs_bos = (toks[0] == llama_token_bos(model));
 			w = find_last_str(detok.c_str(), stop_string.c_str());
 			assert(!is_null(w));
 			std::string substr = detok.substr(0, w - detok.c_str());
@@ -1025,7 +977,7 @@ bool Llama::remove_stop_string(std::vector<llama_token>& toks) {
 		w = strstr(detok.c_str(), "\n:");
 		if (w != nullptr) {
 			if (remove_stop_str) {
-				bool needs_bos = (toks[0] == llama_token_bos(ctx));
+				bool needs_bos = (toks[0] == llama_token_bos(model));
 				w = find_last_str(detok.c_str(), "\n:");
 				assert(!is_null(w));
 				std::string substr = detok.substr(0, w - detok.c_str());
@@ -1070,7 +1022,6 @@ void Llama::free() {
 	stop_string.clear();
 	chats.clear();
 	pfx_prompt.clear();
-	clear_grammar();
 }
 
 void Llama::chat_session(const std::string& char_card, const std::string& bn, const std::string& un, const std::string& bot_greeting) {

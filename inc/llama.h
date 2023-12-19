@@ -233,14 +233,6 @@ public:
 	std::string get_stop_string() const		{ return stop_string; }
 	bool get_remove_stop_string() const		{ return remove_stop_str; }
 
-	// Generate according to a BNF grammar.
-	void set_grammar(const std::string& grammar_str);
-	void set_grammar_from_file(const std::string& pathname);
-	void clear_grammar();
-	bool has_grammar() const		{ return grammar != nullptr; }
-	std::string get_grammar_str() const	{ return grammar_s; }
-	llama_grammar* get_grammar() const	{ return grammar; }
-
 	// Get information about the current session.
 	u32 tokens_session() const		{ return (u32) session_tok.size(); }
 	u32 model_context_size() const	{ if (nullptr == ctx) return 0ul; return (u32) llama_n_ctx(ctx); }
@@ -308,8 +300,6 @@ private:
 	std::string stop_string;
 	bool remove_stop_str;
 	std::string chat_isn;
-	std::string grammar_s;
-	llama_grammar* grammar;
 	InstructionType isn_type;
 	std::string isn_opening;
 	std::string isn_closing;

@@ -4,10 +4,9 @@
 
 	Simple demo of Stable Diffusion inference.
 
-	Built for CPU (sd-cpu) and for CUDA (sd-cuda), although at time of writing the 2-d convolutional operations in GGML
-	are not all available in the CUDA version of the library; these run on CPU so sd-cuda is only slightly faster.
+	Built for CPU (sd-cpu) and for CUDA (sd-cuda).
 
-	2023 C. M. Street
+	2023, C. M. Street
 
 ***/
 #define CODEHAPPY_NATIVE
@@ -59,11 +58,12 @@ int app_main() {
 	std::cout << "Number of CPU threads: " << sd_server.get_nthreads() << "\n";
 	std::cout << "Denoising steps: " << sd_server.get_steps() << "\n";
 
-	SBitmap* out = sd_server.txt2img(prompt, neg_prompt, w, h, cfg);
+	SBitmap** out = sd_server.txt2img(prompt, neg_prompt, w, h, cfg);
 
 	std::cout << "The random seed used for this generation was " << sd_server.get_last_seed() << "\n";
 	std::cout << "Writing image to '" << out_path << "'...\n";
-	out->save_bmp(out_path);
+	out[0]->save_bmp(out_path);
+	free_batch_bmps(out, 1);
 
 	return 0;
 }
