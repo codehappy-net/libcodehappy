@@ -46,7 +46,7 @@ g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llamagen.cpp 
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llamaisn.cpp -o llamaisn.o
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llamasummarize.cpp -o llamasummarize.o
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/lang.cpp -o lang.o
-g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/chat.cpp -o chat.o
+g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -DCODEHAPPY_CUDA -c examples/chat.cpp -o chat.o
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llamaembed.cpp -o llamaembed.o
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/thegame.cpp -o thegame.o
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -DCODEHAPPY_CUDA -c examples/sd.cpp -o sd.o

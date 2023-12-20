@@ -62,6 +62,7 @@ g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/sd.cpp -o sd.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/ttfembed.cpp -o ttfembed.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/bertembed.cpp -o bertembed.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/bert2stream.cpp -o bert2stream.o
+g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/chat.cpp -o chat.o
 g++ -O3 -flto -fuse-linker-plugin -m64 compress.o bin/libcodehappy.a -lpthread -o compress
 g++ -O3 -flto -fuse-linker-plugin -m64 testfont.o bin/libcodehappy.a -lpthread -o testfont
 g++ -O3 -flto -fuse-linker-plugin -m64 colors.o bin/libcodehappy.a -lpthread -o colors
@@ -85,6 +86,7 @@ g++ -O3 -flto -fuse-linker-plugin -m64 sd.o bin/libcodehappy.a -lpthread -o sd-c
 g++ -O3 -flto -fuse-linker-plugin -m64 ttfembed.o bin/libcodehappy.a -lpthread -o ttfembed
 g++ -O3 -flto -fuse-linker-plugin -m64 bertembed.o bin/libcodehappy.a -lpthread -o bertembed-cpu
 g++ -O3 -flto -fuse-linker-plugin -m64 bert2stream.o bin/libcodehappy.a -lpthread -o bert2stream
+g++ -O3 -flto -fuse-linker-plugin -m64 chat.o bin/libcodehappy.a -lpthread -o chat-cpu
 if [ $embed_built -eq 1 ]; then
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc -DCODEHAPPY_NATIVE examples/fontsample.cpp -o fontsample.o
 g++ -O3 -flto -fuse-linker-plugin -m64 fontsample.o bin/libcodehappy.a -lpthread -o fontsample

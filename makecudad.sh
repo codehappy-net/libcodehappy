@@ -35,7 +35,7 @@ cp embed_d.o bin
 fi
 
 echo "*** Build the C++ library (nice single file build)"
-g++ -std=c++11 -g -c -Iinc -Wno-unused-result -DCODEHAPPY_NATIVE -DCODEHAPPY_CUDA -DALL_FONTS -Wno-deprecated-declarations src/libcodehappy.cpp -o libcodehappy.o
+g++ -std=c++11 -g -c -Iinc -Wno-unused-result -DCODEHAPPY_NATIVE -DCODEHAPPY_CUDA -DCODEHAPPY_DEBUG -DALL_FONTS -Wno-deprecated-declarations src/libcodehappy.cpp -o libcodehappy.o
 
 echo "*** Create the library archive"
 gcc-ar rcs bin/libcodehappycudad.a *.o

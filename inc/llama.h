@@ -45,6 +45,7 @@ enum InstructionType {
 	ISN_PHIND,		// ### System Prompt, ### User Message, ### Assistant (sigh)
 	ISN_ORCA_HASHES,	// ### System: ### User: ### Assistant: (fbpfbpfbpfbpfft)
 	ISN_XWINCODER,		// <system>: <user>: and <AI>:
+	ISN_PHI2,		// Instruct: and Output:
 
 	/* these should always be last */
 	ISN_MAX,

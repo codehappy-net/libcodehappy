@@ -8,7 +8,6 @@
 
 ***/
 #define CODEHAPPY_NATIVE
-#define CODEHAPPY_CUDA
 #include <libcodehappy.h>
 
 #define BOT_COLOR	CC_FG_CYAN

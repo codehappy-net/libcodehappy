@@ -182,6 +182,7 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	int bparam = 0;
 	int quant = 8;
 	int layers4;
+	bool moe = false;
 	log_disable();
 	model = nullptr;
 	ctx = nullptr;
@@ -214,6 +215,11 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 			quant = atoi(qs + 1);
 			break;
 		}
+	}
+
+	moe = (__stristr(model_path, "mixtral") != nullptr);
+	if (__stristr(model_path, "phi-2") != nullptr) {
+		bparam = 3;
 	}
 
 	switch (bparam) {
@@ -253,6 +259,9 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 		break;
 	case 7:
 		layers4 = 200;
+		if (moe) {
+			layers4 = 28;
+		}
 		break;
 	case 3:
 	default:
@@ -339,7 +348,7 @@ std::string Llama::isn_rubric_opening() const {
 		return sys_prompt;
 
 	case ISN_MISTRAL:
-		return "<s>[INST]";
+		return "<s> [INST]";
 
 	case ISN_PYGMALION:
 		return "<|system|>";
@@ -423,6 +432,9 @@ std::string Llama::isn_rubric_opening() const {
 		ret += sys_prompt;
 		ret += "\n<user>: ";
 		return ret;
+
+	case ISN_PHI2:
+		return "Instruct: ";
 	}
 	return "### Instruction: ";
 }
@@ -440,6 +452,7 @@ std::string Llama::isn_rubric_closing(bool trail_space) const {
 	case ISN_CUSTOM:
 		return isn_closing;
 	case ISN_MISTRAL:
+		return " [/INST]";
 	case ISN_CODELLAMA:
 	case ISN_LLAMA2CHAT:
 		return "[/INST]";
@@ -473,6 +486,8 @@ std::string Llama::isn_rubric_closing(bool trail_space) const {
 		if (trail_space)
 			return "\n<AI>: ";
 		return "\n<AI>:";
+	case ISN_PHI2:
+		return "\nOutput:";
 	}
 	return "\n\n### Response:";
 }
@@ -564,7 +579,7 @@ std::string Llama::isn_system_prompt() const {
 static std::string __rubric_names[] = {
 	"alpaca", "alpaca-system", "mistral", "pygmalion", "codellama", "chatml", "vicuna", "monadgpt",
 	"tulu", "orca", "llama2chat", "human-assistant", "user-assistant", "deepseek-coder", "guanaco",
-	"zephyr", "phind", "orca-hashes", "xwincoder",
+	"zephyr", "phind", "orca-hashes", "xwincoder", "phi2",
 };
 
 std::string Llama::isn_rubric_name(InstructionType it) {
@@ -613,7 +628,7 @@ InstructionType Llama::isn_rubric_from_model_name(const char * s) const {
 		{ "wizardmath", ISN_ALPACA_SYS }, { "wizardlm", ISN_VICUNA }, { "mythalion", ISN_ALPACA_SYS },
 		{ "platypus", ISN_ALPACA_SYS }, { "beluga", ISN_ORCA_HASHES }, { "euryale", ISN_ALPACA_SYS },
 		{ "amethyst", ISN_ALPACA_SYS }, { "agentlm", ISN_LLAMA2CHAT }, { "lemur", ISN_CHATML },
-		{ "capybara-tess", ISN_ORCA },
+		{ "capybara-tess", ISN_ORCA }, { "mixtral", ISN_MISTRAL }, { "phi-2", ISN_PHI2 },
 	};
 	// Goliath does fine taking either ISN_ALPACA or ISN_VICUNA, does one perform better?
 
