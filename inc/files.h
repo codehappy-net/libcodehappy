@@ -151,5 +151,9 @@ extern const char* filename_from_path(const char* path);
 /* Convert any slashes/backslashes in the passed path to the native format. */
 extern void regularize_slashes(char* path);
 
+/* Returns a list of paths to all files in the directory. Can recursively search subdirectories. */
+extern void file_list_from_path(const char* path, std::vector<std::string>& files_out, bool recursive_search = false);
+extern void file_list_from_path(const std::string& path, std::vector<std::string>& files_out, bool recursive_search = false);
+
 #endif  // __CODEHAPPY_FILES
 /*** end files.h ***/

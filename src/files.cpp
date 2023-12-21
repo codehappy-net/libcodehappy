@@ -30,15 +30,9 @@ u32 filelen(FILE* f) {
 
 /*** as above, but takes a filename ***/
 u32 filelen(const char* fname) {
-	FILE* f;
-	u32 ret;
-	f = fopen(fname, "rb");
-	if (is_null(f))
-		return 0;
-	fseek(f, 0, SEEK_END);
-	ret = ftell(f);
-	fclose(f);
-	return ret;
+	struct stat st;
+	stat(fname, &st);
+	return (u32)st.st_size;
 }
 
 u32 filelen(const std::string& fname) {
@@ -47,19 +41,7 @@ u32 filelen(const std::string& fname) {
 
 /*** note: won't work with files > 2GB ***/
 u32 flength(const char *fname) {
-#if 0 //#ifdef CODEHAPPY_MSFT
-	FILE* f = fopen(fname, "rb");
-	u32 ret;
-	NOT_NULL_OR_RETURN(f, 0);
-	ret = _filelength(fileno(f));
-	fclose(f);
-	return(ret);
-#else
-	/* on non-MSVC compilers, use the more portable POSIX stat() function */
-	struct stat st;
-	stat(fname, &st);
-	return (u32)st.st_size;
-#endif
+	return filelen(fname);
 }
 
 /*** adapted to work with very large files ***/
@@ -609,6 +591,42 @@ std::string change_filename_extension(const std::string& fname, const char* new_
 	const char* nstr = change_filename_extension(fname.c_str(), new_ext);
 	std::string str_ret = nstr;
 	return str_ret;
+}
+
+void file_list_from_path(const char* path, std::vector<std::string>& files_out, bool recursive_search) {
+	DIR* di = opendir(path);
+	dirent* entry;
+	bool is_dir;
+
+	while (entry = readdir(di)) {
+		std::string new_path;
+#ifdef _DIRENT_HAVE_D_TYPE
+        	if (entry->d_type != DT_UNKNOWN && entry->d_type != DT_LNK) {
+			is_dir = (entry->d_type == DT_DIR);
+	        } else
+#endif
+	        /* else... */	{
+			struct stat stbuf;
+			stat(entry->d_name, &stbuf);
+			is_dir = S_ISDIR(stbuf.st_mode);
+		}
+
+		if (is_dir) {
+			if (recursive_search && entry->d_name[0] != '.') {
+				make_pathname(path, entry->d_name, new_path);
+				file_list_from_path(new_path.c_str(), files_out, true);
+			}
+			continue;
+		}
+
+		make_pathname(path, entry->d_name, new_path);
+		files_out.push_back(new_path);
+	}
+	closedir(di);
+}
+
+void file_list_from_path(const std::string& path, std::vector<std::string>& files_out, bool recursive_search) {
+	file_list_from_path(path.c_str(), files_out, recursive_search);
 }
 
 /*** end files.cpp ***/
