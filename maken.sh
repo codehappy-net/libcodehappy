@@ -20,6 +20,8 @@ gcc -I. -O3 -std=c11 $GGML_GCC_ARGS -c inc/external/ggml/ggml-backend.c -o ggml-
 gcc -I. -O3 -std=c11 $GGML_GCC_ARGS -c inc/external/ggml/ggml-quants.c -o ggml-quants.o
 g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/sampling.cpp -o sampling.o
 g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/train.cpp -o train.o
+g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/llava.cpp -o llava.o
+g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/clip.cpp -o clip.o
 
 echo "*** Build embedded fonts/patches."
 embed_built=0

@@ -24,6 +24,8 @@ gcc -I. -g -std=c11 $GGML_GCC_ARGS $CUDA_INC_DIRS -c inc/external/ggml/ggml-back
 gcc -I. -g -std=c11 $GGML_GCC_ARGS $CUDA_INC_DIRS -c inc/external/ggml/ggml-quants.c -o ggml-quants.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/sampling.cpp -o sampling.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/train.cpp -o train.o
+g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/llava.cpp -o llava.o
+g++ -I. -g -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/clip.cpp -o clip.o
 
 echo "*** Build embedded fonts/patches."
 if [ -f "bin/embed_d.o" ]; then
@@ -46,11 +48,13 @@ g++ -g -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llamagen.cpp -o llam
 g++ -g -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/chat.cpp -o chat.o
 g++ -g -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llamaembed.cpp -o llamaembed.o
 g++ -g -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -DCODEHAPPY_CUDA -c examples/sd.cpp -o sd.o
+g++ -g -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llava.cpp -o llava.o
 g++ -g -m64 llamatok.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o  llamatok
 g++ -g -m64 llamagen.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o  llamagen
 g++ -g -m64 chat.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o  chat
 g++ -g -m64 llamaembed.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o llamaembed
 g++ -g -m64 sd.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o sd-cuda
+g++ -g -m64 llava.o bin/libcodehappycudad.a $CUDA_LIBRARIES -o  llava
 
 echo "*** Cleanup"
 rm *.o

@@ -57,6 +57,7 @@ typedef void (*LlamaCallback)(const char *);
 struct LlamaDefaults {
 	LlamaDefaults();
 	std::string model_path;
+	std::string mmproj_path;
 	int top_k;
 	float top_p;
 	float temp;
@@ -135,6 +136,12 @@ public:
 	void prefix_prompt(const std::string& str);
 	void prefix_prompt(const char* str);
 
+	// Set up a multimodal prompt with an associated image. You can either set the image_embed separately with
+	// embed_image_path() or embed_image(), or pass it directly to multimodal_image_prompt().
+	void multimodal_image_prompt(const std::string& str);
+	void multimodal_image_prompt(const std::string& str, const std::string& image_path);
+	void multimodal_image_prompt(const std::string& str, SBitmap* bmp);
+
 	// Begin a chatbot session. You provide a 'character card' for the bot's persona, their display name, your display
 	// name, and a greeting which will be the bot's first response (if you would prefer to begin the conversation, pass
 	// an empty string as the greeting.) In chat mode, the model will only generate one line at a time, and will keep
@@ -164,6 +171,10 @@ public:
 	
 	// Returns all the text from the current session.
 	std::string session_text();
+
+	// Creates an image embedding for multi-modal prompt. Returns true iff successful.
+	bool embed_image_path(const std::string& image_pathname);
+	bool embed_image(SBitmap* bmp);
 
 	// Generate tokens (up to max_tokens, if passed in, with < 0 meaning 'no token limit, generate to end of text'.)
 	// If 'echo' is true, the tokens will be printed to stdout as they are generated.
@@ -278,12 +289,16 @@ private:
 	bool remove_stop_string(std::vector<llama_token>& toks);
 	void do_init(const char* model_path, int vram_gb, bool og_llama, bool is_70b);
 	InstructionType isn_rubric_from_model_name(const char * s) const;
-	
+	void generate_llava(std::vector<llama_token>& toks_out, int max_tokens, bool echo, LlamaCallback clback, bool insert_bos);
+
 	gpt_params params;
 	// TODO: static cache, if multiple Llama objects are created that use the same model, just load it once and share between class instances.
 	llama_model * model;
 	llama_context * ctx;
 	llama_context * ctx_cfg;
+	llava_context * ctx_llava;
+	clip_ctx * ctx_clip;
+	llava_image_embed * img_embed;
 	std::vector<llama_token> embd_inp;
 	std::vector<llama_token> session_tok;
 	std::vector<llama_token> guidance_inp;
@@ -305,6 +320,7 @@ private:
 	std::string isn_opening;
 	std::string isn_closing;
 	std::string isn_system;
+	std::string isn_mmodal;
 };
 
 extern bool ggml_backend_is_init();

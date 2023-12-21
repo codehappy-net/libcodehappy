@@ -24,6 +24,8 @@ gcc -I. -O3 -std=c11 $GGML_GCC_ARGS $CUDA_INC_DIRS -c inc/external/ggml/ggml-bac
 gcc -I. -O3 -std=c11 $GGML_GCC_ARGS $CUDA_INC_DIRS -c inc/external/ggml/ggml-quants.c -o ggml-quants.o
 g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/sampling.cpp -o sampling.o
 g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/train.cpp -o train.o
+g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/llava.cpp -o llava.o
+g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS $CUDA_INC_DIRS -c inc/external/ggml/clip.cpp -o clip.o
 
 echo "*** Build embedded fonts/patches."
 if [ -f "bin/embed.o" ]; then
@@ -51,6 +53,7 @@ g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llamaembed.cp
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/thegame.cpp -o thegame.o
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -DCODEHAPPY_CUDA -c examples/sd.cpp -o sd.o
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -DCODEHAPPY_CUDA -c examples/bertembed.cpp -o bertembed.o
+g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/llava.cpp -o llava.o
 g++ -O3 -flto -m64 llamatok.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o  llamatok
 g++ -O3 -flto -m64 llamagen.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o  llamagen
 g++ -O3 -flto -m64 llamaisn.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o  llamaisn
@@ -61,6 +64,7 @@ g++ -O3 -flto -m64 llamaembed.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o llamae
 g++ -O3 -flto -m64 sd.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o sd-cuda
 g++ -O3 -flto -m64 thegame.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o thegame
 g++ -O3 -flto -m64 bertembed.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o bertembed
+g++ -O3 -flto -m64 llava.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o llava
 
 echo "*** Cleanup"
 rm *.o

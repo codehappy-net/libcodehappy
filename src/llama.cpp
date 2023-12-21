@@ -17,7 +17,7 @@ Llama::Llama(const std::string& model_path, int vram_gb, bool og_llama, bool is_
 }
 
 Llama::Llama(const ArgParse& ap, const LlamaDefaults& defaults) {
-	std::string model_path;
+	std::string model_path, mmproj_path;
 	int iv;
 	float fv;
 	int vram_gb;
@@ -27,6 +27,10 @@ Llama::Llama(const ArgParse& ap, const LlamaDefaults& defaults) {
 		model_path = defaults.model_path;
 	if (model_path.empty())
 		codehappy_cerr << "error: no model pathname provided\n";
+
+	ap.value_str("llama-mmproj", mmproj_path);
+	if (mmproj_path.empty())
+		mmproj_path = defaults.mmproj_path;
 
 	vram_gb = defaults.vram_gb;
 	if (ap.flag_present("llama-vram")) {
@@ -38,6 +42,14 @@ Llama::Llama(const ArgParse& ap, const LlamaDefaults& defaults) {
 	}
 
 	do_init(model_path.c_str(), vram_gb, defaults.og_llama, false);
+
+	if (!mmproj_path.empty()) {
+		ctx_clip = clip_model_load(mmproj_path.c_str(), /*verbosity=*/ 0);
+		ctx_llava = new llava_context;
+		ctx_llava->ctx_llama = nullptr;
+		ctx_llava->ctx_clip = ctx_clip;
+		ctx_llava->model = nullptr;
+	}
 
 	// set each parameter according to the defaults or the ArgParse values.
 	if (defaults.top_k > 0)
@@ -187,6 +199,9 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	model = nullptr;
 	ctx = nullptr;
 	ctx_cfg = nullptr;
+	ctx_clip = nullptr;
+	ctx_llava = nullptr;
+	img_embed = nullptr;
 	guidance_offset = 0;
 	original_prompt_len = 0;
 	keep_tok = 0;
@@ -220,6 +235,9 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 	moe = (__stristr(model_path, "mixtral") != nullptr);
 	if (__stristr(model_path, "phi-2") != nullptr) {
 		bparam = 3;
+	}
+	if (__stristr(model_path, "llava") != nullptr) {
+		bparam = 7;
 	}
 
 	switch (bparam) {
@@ -666,6 +684,11 @@ void Llama::ensure_model_loaded() {
 	        struct llama_context_params lparams = llama_context_params_from_gpt_params(params);
 	        ctx_cfg = llama_new_context_with_model(model, lparams);
 	}
+	if (ctx_llava != nullptr) {
+		ctx_llava->ctx_llama = ctx;
+		ctx_llava->ctx_clip = ctx_clip;
+		ctx_llava->model = model;
+	}
 }
 
 void Llama::reset_contexts() {
@@ -677,6 +700,11 @@ void Llama::reset_contexts() {
 	ctx = llama_new_context_with_model(model, lparams);
 	if (params.sparams.cfg_scale != 1.f) {
 		ctx_cfg = llama_new_context_with_model(model, lparams);
+	}
+	if (ctx_llava != nullptr) {
+	    ctx_llava->ctx_llama = ctx;
+	    ctx_llava->ctx_clip = ctx_clip;
+	    ctx_llava->model = model;
 	}
 }
 
@@ -784,7 +812,7 @@ void Llama::session_prompt(const std::string& str) {
 	std::string str_cp = str;
 	embd_inp.clear();
 	session_tok.clear();
-    	// (no longer needed) str_cp.insert(0, 1, ' ');
+	isn_mmodal.clear();
 	tokenize(str_cp, session_tok, true, params.n_ctx - 4);
 	tokenize_cfg_prompt();
 	reset_contexts();
@@ -870,6 +898,12 @@ void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, Llama
 	std::vector<llama_token> embd_guidance;
 
 	ensure_model_loaded();
+	if (!isn_mmodal.empty()) {
+		// handle inference with an embedded image
+		generate_llava(toks_out, get_tokens_predict(), echo, clback, insert_bos);
+		return;
+	}
+
 	if (insert_bos && (embd_inp.empty() || embd_inp[0] != llama_token_bos(model))) {
 		embd_inp.insert(embd_inp.begin(), llama_token_bos(model));
 	}
@@ -1029,10 +1063,19 @@ void Llama::free() {
 		llama_free(ctx);
 	if (ctx_cfg != nullptr)
 		llama_free(ctx_cfg);
+	if (ctx_clip != nullptr)
+		clip_free(ctx_clip);
+	if (ctx_llava != nullptr)
+		delete ctx_llava;
 	if (model != nullptr)
 		llama_free_model(model);
+	if (img_embed != nullptr)
+		delete img_embed;
 	ctx = nullptr;
 	ctx_cfg = nullptr;
+	ctx_clip = nullptr;
+	ctx_llava = nullptr;
+	img_embed = nullptr;
 	model = nullptr;
 	remove_stop_str = false;
 	bot_name.clear();
@@ -1337,6 +1380,186 @@ void Llama::embeddings_for_folder(const std::string& path, LMEmbeddingFolder* le
 	closedir(di);
 }
 
+bool Llama::embed_image_path(const std::string& image_pathname) {
+	// we need a multimodal projector model for this operation.
+	if (is_null(ctx_llava)) {
+		codehappy_cerr << "*** error: image embedding requires a multimodal projection model.\n";
+		return false;
+	}
+	if (img_embed != nullptr) {
+		delete img_embed;
+		img_embed = nullptr;
+	}
+
+	img_embed = llava_image_embed_make_with_filename(ctx_llava->ctx_clip, params.n_threads, image_pathname.c_str());
+
+	return img_embed != nullptr;
+}
+
+bool Llama::embed_image(SBitmap* bmp) {
+	char* path = temp_file_name(".png");
+	bool ret;
+	bmp->save_bmp(path);
+	ret = embed_image_path(path);
+	remove(path);
+	delete path;
+	return ret;
+}
+
+void Llama::multimodal_image_prompt(const std::string& str) {
+	if (is_null(img_embed)) {
+		codehappy_cerr << "*** error: we need an embedded image to do a multimodal image prompt\n";
+		return;
+	}
+	isn_mmodal = str;
+}
+
+void Llama::multimodal_image_prompt(const std::string& str, const std::string& image_path) {
+	if (!embed_image_path(image_path))
+		return;
+	multimodal_image_prompt(str);
+}
+
+void Llama::multimodal_image_prompt(const std::string& str, SBitmap* bmp) {
+	if (!embed_image(bmp))
+		return;
+	multimodal_image_prompt(str);
+}
+
+/* LLaVA helper functions */
+static bool llava_eval_tokens(struct llama_context * ctx_llama, std::vector<llama_token> tokens, int n_batch, int * n_past) {
+    int N = (int) tokens.size();
+    for (int i = 0; i < N; i += n_batch) {
+        int n_eval = (int) tokens.size() - i;
+        if (n_eval > n_batch) {
+            n_eval = n_batch;
+        }
+        if (llama_decode(ctx_llama, llama_batch_get_one(&tokens[i], n_eval, *n_past, 0))) {
+            fprintf(stderr, "%s : failed to eval. token %d/%d (batch size %d, n_past %d)\n", __func__, i, N, n_batch, *n_past);
+            return false;
+        }
+        *n_past += n_eval;
+    }
+    return true;
+}
+
+static bool llava_eval_id(struct llama_context * ctx_llama, int id, int * n_past) {
+    std::vector<llama_token> tokens;
+    tokens.push_back(id);
+    return llava_eval_tokens(ctx_llama, tokens, 1, n_past);
+}
+
+// this one uses most the same rigamarole logic as generate_tokens(), should unify the sampling code
+static llama_token llava_sample_id(llama_context * ctx_llama, gpt_params & params) {
+    auto & sparams = params.sparams;
+
+    // out of user input, sample next token
+    const float   temp      = sparams.temp;
+    const int32_t top_k     = sparams.top_k <= 0 ? llama_n_vocab(llama_get_model(ctx_llama)) : sparams.top_k;
+    const float   top_p     = sparams.top_p;
+    const float   tfs_z     = sparams.tfs_z;
+    const float   typical_p = sparams.typical_p;
+    const int     mirostat     = sparams.mirostat;
+    const float   mirostat_tau = sparams.mirostat_tau;
+    const float   mirostat_eta = sparams.mirostat_eta;
+
+    llama_token id = 0;
+    {
+        auto logits  = llama_get_logits(ctx_llama);
+        auto n_vocab = llama_n_vocab(llama_get_model(ctx_llama));
+
+        // Apply params.logit_bias map
+        for (auto it = sparams.logit_bias.begin(); it != sparams.logit_bias.end(); it++) {
+            logits[it->first] += it->second;
+        }
+
+        std::vector<llama_token_data> candidates;
+        candidates.reserve(n_vocab);
+        for (llama_token token_id = 0; token_id < n_vocab; token_id++) {
+            candidates.emplace_back(llama_token_data{token_id, logits[token_id], 0.0f});
+        }
+
+        llama_token_data_array candidates_p = { candidates.data(), candidates.size(), false };
+
+        if (temp <= 0) {
+              // Greedy sampling
+            id = llama_sample_token_greedy(ctx_llama, &candidates_p);
+        } else {
+            if (mirostat == 1) {
+                static float mirostat_mu = 2.0f * mirostat_tau;
+                const  int mirostat_m    = 100;
+                llama_sample_temp(ctx_llama, &candidates_p, temp);
+                id = llama_sample_token_mirostat(ctx_llama, &candidates_p, mirostat_tau, mirostat_eta, mirostat_m, &mirostat_mu);
+            } else if (mirostat == 2) {
+                static float mirostat_mu = 2.0f * mirostat_tau;
+                llama_sample_temp(ctx_llama, &candidates_p, temp);
+                id = llama_sample_token_mirostat_v2(ctx_llama, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu);
+            } else {
+                  // Temperature sampling
+                llama_sample_top_k(ctx_llama, &candidates_p, top_k, 1);
+                llama_sample_tail_free(ctx_llama, &candidates_p, tfs_z, 1);
+                llama_sample_typical(ctx_llama, &candidates_p, typical_p, 1);
+                llama_sample_top_p(ctx_llama, &candidates_p, top_p, 1);
+                llama_sample_temp(ctx_llama, &candidates_p, temp);
+                id = llama_sample_token(ctx_llama, &candidates_p);
+            }
+        }
+    }
+
+    return id;
+}
+
+static const char * llava_sample(struct llama_context * ctx_llama, gpt_params & params, int * n_past, llama_token* tok_out) {
+    int id = llava_sample_id(ctx_llama, params);
+    static std::string ret;
+    if (id == llama_token_eos(llama_get_model(ctx_llama))) {
+        ret = "</s>";
+    } else {
+        ret = llama_token_to_piece(ctx_llama, id);
+    }
+    llava_eval_id(ctx_llama, id, n_past);
+    if (tok_out != nullptr)
+    	*tok_out = id;
+    return ret.c_str();
+}
+
+static bool llava_eval_string(struct llama_context * ctx_llama, const char* str, int n_batch, int * n_past, bool add_bos) {
+	std::string str2 = str;
+	std::vector<llama_token> embd_inp = ::llama_tokenize(ctx_llama, str2, add_bos);
+	llava_eval_tokens(ctx_llama, embd_inp, n_batch, n_past);
+	return true;
+}
+
+void Llama::generate_llava(std::vector<llama_token>& toks_out, int max_tokens, bool echo, LlamaCallback clback, bool insert_bos) {
+	int n_past = 0;
+	const int max_tgt_len = std::max(max_tokens, 512);
+
+	insert_bos = llama_should_add_bos_token(model);
+	if (is_null(img_embed)) {
+		codehappy_cerr << "*** error: multimodal image prompt without an embedded image?\n";
+		return;
+	}
+
+	// llava chat format is "<system_prompt>\nUSER:<image_embeddings>\n<textual_prompt>\nASSISTANT:"
+	llava_eval_string(ctx_llava->ctx_llama, "A chat between a curious human and an artificial intelligence assistant.  The assistant gives helpful, detailed, and polite answers to the human's questions.\nUSER:", params.n_batch, &n_past, insert_bos);
+	llava_eval_image_embed(ctx_llava->ctx_llama, img_embed, params.n_batch, &n_past);
+	llava_eval_string(ctx_llava->ctx_llama, (isn_mmodal + "\nASSISTANT:").c_str(), params.n_batch, &n_past, false);
+
+	for (int i = 0; i < max_tgt_len; i++) {
+		llama_token tok_out;
+		const char * tmp = llava_sample(ctx_llava->ctx_llama, params, &n_past, &tok_out);
+		if (!strcmp(tmp, "</s>"))
+			break;
+		toks_out.push_back(tok_out);
+		if (echo) {
+			printf("%s", tmp);
+			fflush(stdout);
+		}
+	}
+
+	isn_mmodal.clear();
+}
+
 ChatEntry::ChatEntry(Llama* l, const std::string& p, const std::string& r) {
 	std::string entry;
 	persona = p;
@@ -1371,6 +1594,7 @@ LlamaDefaults llama_defaults;
 
 void llama_args(ArgParse& ap) {
 	ap.add_argument("llama-model", type_string, "path to the .GGUF-format large language model");
+	ap.add_argument("llama-mmproj", type_string, "path to the .GGUF-format multimodal projector model (if needed)");
 	ap.add_argument("llama-top-k", type_int, "top k (most likely) parameter for sampling");
 	ap.add_argument("llama-top-p", type_double, "top p (cumulative probability) parameter for sampling");
 	ap.add_argument("llama-temp", type_double, "temperature for large language model sampling");

@@ -436,6 +436,8 @@ private:
 #include "external/ggml/grammar-parser.h"
 #include "external/ggml/sampling.h"
 #include "external/ggml/train.h"
+#include "external/ggml/llava.h"
+#include "external/ggml/clip.h"
 
 /*** Stable Diffusion inference in ggml ***/
 #ifdef CODEHAPPY_CUDA
