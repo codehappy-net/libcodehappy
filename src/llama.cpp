@@ -1070,7 +1070,7 @@ void Llama::free() {
 	if (model != nullptr)
 		llama_free_model(model);
 	if (img_embed != nullptr)
-		delete img_embed;
+		llava_image_embed_free(img_embed);
 	ctx = nullptr;
 	ctx_cfg = nullptr;
 	ctx_clip = nullptr;
@@ -1387,7 +1387,7 @@ bool Llama::embed_image_path(const std::string& image_pathname) {
 		return false;
 	}
 	if (img_embed != nullptr) {
-		delete img_embed;
+		llava_image_embed_free(img_embed);
 		img_embed = nullptr;
 	}
 
@@ -1411,6 +1411,8 @@ void Llama::multimodal_image_prompt(const std::string& str) {
 		codehappy_cerr << "*** error: we need an embedded image to do a multimodal image prompt\n";
 		return;
 	}
+	ensure_model_loaded();
+	reset_contexts();
 	isn_mmodal = str;
 }
 
@@ -1532,7 +1534,7 @@ static bool llava_eval_string(struct llama_context * ctx_llama, const char* str,
 
 void Llama::generate_llava(std::vector<llama_token>& toks_out, int max_tokens, bool echo, LlamaCallback clback, bool insert_bos) {
 	int n_past = 0;
-	const int max_tgt_len = std::max(max_tokens, 512);
+	const int max_tgt_len = (max_tokens < 0 ? 512 : max_tokens);
 
 	insert_bos = llama_should_add_bos_token(model);
 	if (is_null(img_embed)) {
