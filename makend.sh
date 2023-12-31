@@ -15,7 +15,6 @@ g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/common.cpp -o common.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/console.cpp -o console.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/build-info.cpp -o build-info.o
 g++ -I. -g -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/grammar-parser.cpp -o grammar-parser.o
-gcc -I. -g -std=c11 $GGML_GCC_ARGS -c -o k_quants.o inc/external/ggml/k_quants.c
 gcc -I. -g -std=c11 $GGML_GCC_ARGS -c inc/external/ggml/ggml-alloc.c -o ggml-alloc.o
 gcc -I. -g -std=c11 $GGML_GCC_ARGS -c inc/external/ggml/ggml-backend.c -o ggml-backend.o
 gcc -I. -g -std=c11 $GGML_GCC_ARGS -c inc/external/ggml/ggml-quants.c -o ggml-quants.o

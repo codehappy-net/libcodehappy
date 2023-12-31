@@ -2597,6 +2597,7 @@ static void copy_and_translate_bmp(SBitmap* src_bmp, SBitmap* dest_bmp) {
 	int y;
 	int x;
 	RGBColor c;
+	BitmapType typ = src_bmp->type();
 
 	assert(not_null(src_bmp) && not_null(dest_bmp));
 	assert(src_bmp->width() == dest_bmp->width());
@@ -2606,7 +2607,15 @@ static void copy_and_translate_bmp(SBitmap* src_bmp, SBitmap* dest_bmp) {
 		for (x = 0; x < src_bmp->width(); ++x) {
 			RGBColor c;
 			c = src_bmp->get_pixel(x, y);
-			dest_bmp->put_pixel_alpha(x, y, c);
+			switch (typ) {
+			case BITMAP_DEFAULT:
+				dest_bmp->put_pixel_alpha(x, y, c);
+				break;
+			default:
+				c &= 0xffffff;
+				dest_bmp->put_pixel(x, y, c);
+				break;
+			}
 		}
 }
 

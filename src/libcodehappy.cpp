@@ -1068,6 +1068,8 @@ bool is_codehappy_verbose() {
 #include "ldm.cpp"
 #include "external/bert.cpp"
 #include "bert.cpp"
+#include "external/ggml/sam.cpp"
+#include "sam.cpp"
 
 // SQLite is compiled separately (it's C99.)
 

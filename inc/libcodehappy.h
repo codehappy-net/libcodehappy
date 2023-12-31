@@ -464,6 +464,9 @@ private:
 /*** BERT embedding manager. ***/
 #include "bert.h"
 
+/*** the Segment Anything model (SAM) ***/
+#include "sam.h"
+
 /*** Application's main declaration. ***/
 #if defined(CODEHAPPY_NATIVE) && defined(CODEHAPPY_SDL) && defined(CODEHAPPY_WINDOWS)
 #define app_main()	WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevIns, LPSTR lpszArgument, int iShow)
