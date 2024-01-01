@@ -20,6 +20,7 @@ struct bitmap_mask {
 	/* iou prediction and stability score (intersections / unions) */
 	float iou;
 	float stability_score;
+	void move(bitmap_mask& move_to);
 };
 
 /* a collection of masks (stored as monochrome bitmaps.) */
@@ -35,6 +36,10 @@ struct bitmap_masks {
 	bitmap_mask* masks;
 };
 
+/* extract the 'best match' bitmap_mask from the collection, and free the others.
+   Pass a mask bitmap to avoid intersections. */
+void bitmap_mask_best_match(bitmap_masks* coll, bitmap_mask& mask_out, SBitmap* mask = nullptr);
+
 /* Segment Anything class */
 
 class SegmentAnything {
@@ -42,8 +47,15 @@ public:
 	SegmentAnything(const std::string& model_path);
 	~SegmentAnything();
 
+	/* return the masks for a given point on an image */
 	bitmap_masks* segment_point(SBitmap* bmp, int x, int y);
 	bitmap_masks* segment_point(const std::string& img_path, int x, int y);
+	bitmap_masks* segment_point(SBitmap* bmp, const SPoint& p);
+	bitmap_masks* segment_point(const std::string& img_path, const SPoint& p);
+
+	/* return a collection of best masks covering at least pct percent of the image. */
+	bitmap_masks* segment_image_auto(const std::string& img_path, float pct);
+	bitmap_masks* segment_image_auto(SBitmap* bmp, float pct);
 
 	void set_seed(int rng)	{ rng_seed = rng; }
 

@@ -13,12 +13,15 @@
 int app_main() {
 	ArgParse ap;
 	std::string model, image;
-	int x = 0, y = 0;
+	int x = 0, y = 0, pct = 90;
+	bool segment_all = false;
 	
 	ap.add_argument("model", type_string, "the Segment Anything model path (.gguf format)");
 	ap.add_argument("img", type_string, "path to the image file");
 	ap.add_argument("x", type_int, "point on the x axis", &x);
 	ap.add_argument("y", type_int, "point on the y axis", &y);
+	ap.add_argument("all", type_none, "auto-segment the full image (up to pct% covered)", &segment_all);
+	ap.add_argument("pct", type_int, "minimum percentage coverage desired for segment-all (default is 90)", &pct);
 	ap.ensure_args(argc, argv);
 	ap.value_str("model", model);
 	ap.value_str("img", image);
@@ -30,7 +33,12 @@ int app_main() {
 	}
 
 	SegmentAnything sam(model);
-	auto bmp_masks = sam.segment_point(image, x, y);
+	bitmap_masks* bmp_masks;
+	if (segment_all) {
+		bmp_masks = sam.segment_image_auto(image, (float) pct);
+	} else {
+		bmp_masks = sam.segment_point(image, x, y);
+	}
 
 	if (is_null(bmp_masks)) {
 		codehappy_cerr << "*** error segmenting the image!\n";

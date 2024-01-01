@@ -5757,4 +5757,46 @@ ttfont* ttf_from_font(const Font* font_in) {
 	return font_in -> font;
 }
 
+bool monobmp_mask_isect(const SBitmap* b1, const SBitmap* b2) {
+	// TODO: could just make a friend function and AND the bits together to determine i'section
+	if (is_null(b1) || is_null(b2))
+		return false;
+
+	/* preconditions */
+	assert(b1->type() == BITMAP_MONO);
+	assert(b2->type() == BITMAP_MONO);
+	assert(b1->width() == b2->width());
+	assert(b1->height() == b2->height());
+
+	for (int y = 0; y < (int) b1->height(); ++y) {
+		for (int x = 0; x < (int) b1->width(); ++x) {
+			if (b1->get_pixel(x, y) != C_WHITE)
+				continue;
+			if (b2->get_pixel(x, y) == C_WHITE)
+				return true;
+		}
+	}
+
+	return false;
+}
+
+void monobmp_mask_union(const SBitmap* b1, SBitmap* b2) {
+	// TODO: could just make a friend function and OR the bits together to make a union
+	if (is_null(b1) || is_null(b2))
+		return;
+
+	/* preconditions */
+	assert(b1->type() == BITMAP_MONO);
+	assert(b2->type() == BITMAP_MONO);
+	assert(b1->width() == b2->width());
+	assert(b1->height() == b2->height());
+
+	for (int y = 0; y < (int) b1->height(); ++y) {
+		for (int x = 0; x < (int) b1->width(); ++x) {
+			if (b1->get_pixel(x, y) == C_WHITE)
+				b2->put_pixel(x, y, C_WHITE);
+		}
+	}
+}
+
 /*** end drawing.cpp ***/

@@ -2220,13 +2220,13 @@ bitmap_masks* sam_mask_segment(const SBitmap* img_in, const std::string& img_pat
         SAM_FPRINTF(stderr, "%s:    total time = %8.2f ms\n", __func__, (t_main_end_us - t_main_start_us)/1000.0f);
     }
 
-    ggml_free(model.ctx);
+    //ggml_free(model.ctx);
 
     return ret;
 
     /* error handling cleanup */
 LErr3:
-    ggml_free(model.ctx);
+    //ggml_free(model.ctx);
 LErr2:
     delete ret;
     return nullptr;

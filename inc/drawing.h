@@ -745,6 +745,10 @@ struct fillsettings {
 	u32			size;		/* size in pixels of fill type */
 };
 
+/* monochrome SBitmaps can be used as masks, let's check for intersections and perform unions of them */
+extern bool monobmp_mask_isect(const SBitmap* b1, const SBitmap* b2);
+extern void monobmp_mask_union(const SBitmap* new_mask, SBitmap* mask_out);
+
 /*** Some built-in pattern callbacks (to use with fills, etc.) follow. ***/
 /*** The void* argument, in these cases, is a struct "fillsettings", containing the desired background and foreground colors for the
 	pattern fill. That structure should be passed to patternfillbmp() etc. as the void* args argument. The fill structure may also contain
