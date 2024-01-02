@@ -54,20 +54,24 @@ public:
 	bitmap_masks* segment_point(const std::string& img_path, const SPoint& p);
 
 	/* return a collection of best masks covering at least pct percent of the image. */
-	bitmap_masks* segment_image_auto(const std::string& img_path, float pct);
-	bitmap_masks* segment_image_auto(SBitmap* bmp, float pct);
+	bitmap_masks* segment_image_auto(const std::string& img_path, float pct, bool echo_progress = false);
+	bitmap_masks* segment_image_auto(SBitmap* bmp, float pct, bool echo_progress = false);
 
-	void set_seed(int rng)	{ rng_seed = rng; }
+	void set_seed(int rng)		{ rng_seed = rng; }
+	void set_nthreads(int nt)	{ nthreads = nt; }
+	int get_seed() const		{ return rng_seed; }
+	int get_nthreads() const	{ return nthreads; }
 
 private:
 	std::string m_path;
 	int rng_seed;
+	int nthreads;
 };
 
 /* core function: this loads the model into RAM (if not already loaded) and performs a single mask operation on an image, which may be 
    passed in as a pathname or as a SBitmap. */
 extern bitmap_masks* sam_mask_segment(const SBitmap* img_in, const std::string& img_path, const std::string& sam_model_path,
-					float x, float y, int rng_seed);
+					float x, float y, int rng_seed, int nthreads);
 
 #endif  // __SEGMENT_ANYTHING_CODEHAPPY
 /* end sam.h */

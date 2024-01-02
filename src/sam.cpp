@@ -46,25 +46,26 @@ bitmap_mask::~bitmap_mask() {
 SegmentAnything::SegmentAnything(const std::string& model_path) {
 	m_path = model_path;
 	rng_seed = -1;
+	nthreads = -1;
 }
 
 SegmentAnything::~SegmentAnything() {
 }
 
 bitmap_masks* SegmentAnything::segment_point(SBitmap* bmp, int x, int y) {
-	return sam_mask_segment(bmp, "", m_path, (float) x, (float) y, rng_seed);
+	return sam_mask_segment(bmp, "", m_path, (float) x, (float) y, rng_seed, nthreads);
 }
 
 bitmap_masks* SegmentAnything::segment_point(const std::string& img_path, int x, int y) {
-	return sam_mask_segment(nullptr, img_path, m_path, (float) x, (float) y, rng_seed);
+	return sam_mask_segment(nullptr, img_path, m_path, (float) x, (float) y, rng_seed, nthreads);
 }
 
 bitmap_masks* SegmentAnything::segment_point(SBitmap* bmp, const SPoint& p) {
-	return sam_mask_segment(bmp, "", m_path, (float) p.X(bmp), (float) p.Y(bmp), rng_seed);
+	return sam_mask_segment(bmp, "", m_path, (float) p.X(bmp), (float) p.Y(bmp), rng_seed, nthreads);
 }
 
 bitmap_masks* SegmentAnything::segment_point(const std::string& img_path, const SPoint& p) {
-	return sam_mask_segment(nullptr, img_path, m_path, (float) p.X(), (float) p.Y(), rng_seed);
+	return sam_mask_segment(nullptr, img_path, m_path, (float) p.X(), (float) p.Y(), rng_seed, nthreads);
 }
 
 static float proportion_covered(const SBitmap* bmp) {
@@ -82,17 +83,17 @@ static float proportion_covered(const SBitmap* bmp) {
 	return ret;
 }
 
-bitmap_masks* SegmentAnything::segment_image_auto(const std::string& img_path, float pct) {
+bitmap_masks* SegmentAnything::segment_image_auto(const std::string& img_path, float pct, bool echo_progress) {
 	SBitmap* bmp = SBitmap::load_bmp(img_path);
 	bitmap_masks* ret;
 	if (is_null(bmp))
 		return nullptr;
-	ret = segment_image_auto(bmp, pct);
+	ret = segment_image_auto(bmp, pct, echo_progress);
 	delete bmp;
 	return ret;
 }
 
-bitmap_masks* SegmentAnything::segment_image_auto(SBitmap* bmp, float pct) {
+bitmap_masks* SegmentAnything::segment_image_auto(SBitmap* bmp, float pct, bool echo_progress) {
 	/***
 
 		first, get the best mask for each point on a 3x3 evenly spaced and centered grid on the image
@@ -106,7 +107,7 @@ bitmap_masks* SegmentAnything::segment_image_auto(SBitmap* bmp, float pct) {
 	SBitmap* mask;
 	int nall = 0, nf = 0;
 	float prop_img;
-	const float MIN_SCORE_THRESHOLD = 0.49;
+	const float MIN_SCORE_THRESHOLD = 0.40;
 
 	while (rng_seed < 0) {
 		rng_seed = RandI32();
@@ -149,9 +150,16 @@ bitmap_masks* SegmentAnything::segment_image_auto(SBitmap* bmp, float pct) {
 		}
 	}
 
+#ifdef CODEHAPPY_DEBUG
+	echo_progress = true;
+#endif
 	matches[0].move(all[nall]);
 	monobmp_mask_union(all[nall].bmp, mask);
 	++nall;
+	if (echo_progress) {		
+		prop_img = proportion_covered(mask);
+		std::cout << "Proportion masked: " << prop_img << "\n";
+	}
 
 	for (int i = 1; i < 9; ++i) {
 		if (matches[i].bmp == nullptr || monobmp_mask_isect(matches[i].bmp, mask))
@@ -161,6 +169,10 @@ bitmap_masks* SegmentAnything::segment_image_auto(SBitmap* bmp, float pct) {
 		matches[i].move(all[nall]);
 		monobmp_mask_union(all[nall].bmp, mask);
 		++nall;
+		if (echo_progress) {
+			prop_img = proportion_covered(mask);
+			std::cout << "Proportion masked: " << prop_img << "\n";
+		}
 	}
 
 	for (int i = 0; i < 9; ++i) {
@@ -169,14 +181,13 @@ bitmap_masks* SegmentAnything::segment_image_auto(SBitmap* bmp, float pct) {
 		matches[i].bmp = nullptr;
 	}
 
-	/*** now, continue by segmenting at random points, until we reach the desired proportion of coverage ***/
+	/*** now, continue by segmenting at chosen points, until we reach the desired proportion of coverage ***/
 	DetRand dr((u32) rng_seed);
+	int failure_thres = 10;
 	pct *= 0.01;
 	prop_img = proportion_covered(mask);
-#ifdef CODEHAPPY_DEBUG		
-	std::cout << "Proportion masked: " << prop_img << "\n";
-#endif
-	while (prop_img < pct && nall < MAX_MATCHES && nf < 6) {
+
+	while (prop_img < pct && nall < MAX_MATCHES && nf < failure_thres) {
 		SPoint p(dr.RandU32Range(0, mask->width() - 1), dr.RandU32Range(0, mask->height() - 1));
 		if (mask->get_pixel(p) == C_WHITE)
 			continue;
@@ -201,9 +212,14 @@ bitmap_masks* SegmentAnything::segment_image_auto(SBitmap* bmp, float pct) {
 		++nall;
 
 		prop_img = proportion_covered(mask);
-#ifdef CODEHAPPY_DEBUG		
-		std::cout << "Proportion masked: " << prop_img << "\n";
-#endif
+		if (echo_progress)
+			std::cout << "Proportion masked: " << prop_img << "\n";
+		if (prop_img > 0.4)
+			failure_thres = 8;
+		if (prop_img > 0.6)
+			failure_thres = 6;
+		if (prop_img > 0.8)
+			failure_thres = 4;
 	}
 
 	delete mask;

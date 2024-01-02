@@ -16,6 +16,7 @@ void fill_palette_grayscale(SPalette* pal) {
 	if (unlikely(is_null(pal) || is_null(pal->clrs)))
 		return;
 
+	assert(pal->ncolors >= 256);
 	pal->ncolors = 256;
 
 	for (e = 0; e < 256; ++e)
@@ -26,6 +27,7 @@ void fill_palette_grayscale(SPalette* pal) {
 void fill_palette_bw(SPalette* pal) {
 	NOT_NULL_OR_RETURN_VOID(pal);
 	
+	assert(pal->ncolors >= 2);
 	pal->ncolors = 2;
 	pal->clrs[0] = C_BLACK;
 	pal->clrs[1] = C_WHITE;
@@ -38,6 +40,7 @@ void fill_palette_hue(SPalette* pal, u32 saturation, u32 value) {
 	NOT_NULL_OR_RETURN_VOID(pal);
 	NOT_NULL_OR_RETURN_VOID(pal->clrs);
 
+	assert(pal->ncolors >= 256);
 	pal->ncolors = 256;
 	for (hue = 0; hue < 256; ++hue) {
 		int r, g, b;
@@ -53,6 +56,7 @@ void fill_palette_saturation(SPalette* pal, u32 hue, u32 value) {
 	NOT_NULL_OR_RETURN_VOID(pal);
 	NOT_NULL_OR_RETURN_VOID(pal->clrs);
 
+	assert(pal->ncolors >= 256);
 	pal->ncolors = 256;
 	for (saturation = 0; saturation < 256; ++saturation) {
 		int r, g, b;
@@ -85,6 +89,7 @@ void fill_palette_color_random_perturbation(SPalette* pal, RGBColor c) {
 	
 	NOT_NULL_OR_RETURN_VOID(pal);
 	NOT_NULL_OR_RETURN_VOID(pal->clrs);
+	assert(pal->ncolors >= 256);
 	pal->ncolors = 256;
 	pal->clrs[0] = c;
 	for (e = 1; e < 256; ++e) {
@@ -100,6 +105,7 @@ void fill_palette_hsv_stepping(SPalette* pal) {
 	
 	NOT_NULL_OR_RETURN_VOID(pal);
 	NOT_NULL_OR_RETURN_VOID(pal->clrs);
+	assert(pal->ncolors >= 218);
 	pal->ncolors = 218;
 
 	/* first two colors are black and white */
@@ -172,6 +178,7 @@ void fill_safety_palette(SPalette* pal) {
 	if (unlikely(is_null(pal) || is_null(pal->clrs)))
 		return;
 
+	assert(pal->ncolors >= 256);
 	pal->ncolors = 256;
 
 	// color 0 must be white, color 255 must be black
@@ -195,6 +202,7 @@ void fill_ega_palette(SPalette* pal) {
 	NOT_NULL_OR_RETURN_VOID(pal);
 	NOT_NULL_OR_RETURN_VOID(pal->clrs);
 
+	assert(pal->ncolors >= 64);
 	pal->ncolors = 64;
 
 	for (i = 0; i < 64; ++i) {
@@ -276,6 +284,7 @@ void fill_vga_palette(SPalette* pal) {
 	if (unlikely(is_null(pal) || is_null(pal->clrs)))
 		return;
 
+	assert(pal->ncolors >= 256);
 	pal->ncolors = 256;
 
 	// first 16 colors come from the default EGA palette
@@ -318,6 +327,7 @@ void fill_apple_ii_palette(SPalette* pal) {
 	if (unlikely(is_null(pal) || is_null(pal->clrs)))
 		return;
 
+	assert(pal->ncolors >= 16);
 	pal->ncolors = 16;
 
 	pal->clrs[0] = APPLE_II_00_BLACK;

@@ -2053,7 +2053,7 @@ void sbitmap_to_sam_image(const SBitmap* img_in, sam_image_u8* img_out) {
 }
 
 // CMS: extended to load model on first run, accept SBitmaps as input, and output the masks as SBitmaps
-bitmap_masks* sam_mask_segment(const SBitmap* img_in, const std::string& img_path, const std::string& sam_model_path, float x, float y, int rng_seed) {
+bitmap_masks* sam_mask_segment(const SBitmap* img_in, const std::string& img_path, const std::string& sam_model_path, float x, float y, int rng_seed, int nthreads) {
     const int64_t t_main_start_us = ggml_time_us();
 
     sam_params params;
@@ -2062,6 +2062,9 @@ bitmap_masks* sam_mask_segment(const SBitmap* img_in, const std::string& img_pat
     params.pt.x = x;
     params.pt.y = y;
     params.seed = rng_seed;
+    if (nthreads > 0) {
+    	params.n_threads = std::min(nthreads, (int) std::thread::hardware_concurrency());
+    }
     bitmap_masks* ret = nullptr;
 
     static sam_model model;
