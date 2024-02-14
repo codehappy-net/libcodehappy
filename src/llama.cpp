@@ -312,6 +312,8 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 		params.n_ctx = 32768;
 	if (__stristr(model_path, "-64k") != nullptr)
 		params.n_ctx = 65536;
+	if (__stristr(model_path, "miqu") != nullptr || __stristr(model_path, "senku") != nullptr)
+		params.n_ctx = 32764;	// note: not 32K exactly, but this strange number.
 
 	params.n_threads = std::max((int) std::thread::hardware_concurrency() / 2, 1);
 
@@ -647,6 +649,7 @@ InstructionType Llama::isn_rubric_from_model_name(const char * s) const {
 		{ "platypus", ISN_ALPACA_SYS }, { "beluga", ISN_ORCA_HASHES }, { "euryale", ISN_ALPACA_SYS },
 		{ "amethyst", ISN_ALPACA_SYS }, { "agentlm", ISN_LLAMA2CHAT }, { "lemur", ISN_CHATML },
 		{ "capybara-tess", ISN_ORCA }, { "mixtral", ISN_MISTRAL }, { "phi-2", ISN_PHI2 },
+		{ "miqu", ISN_MISTRAL }, { "senku", ISN_MISTRAL },
 	};
 	// Goliath does fine taking either ISN_ALPACA or ISN_VICUNA, does one perform better?
 
