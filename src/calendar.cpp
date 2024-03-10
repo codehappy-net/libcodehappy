@@ -24,6 +24,11 @@ uint32_t days_in_year(Year y) {
 	return 365UL + isleapyear(y);
 }
 
+u32 days_in_year(const DateTime* dt) {
+	NOT_NULL_OR_RETURN(dt, 0);
+	return days_in_year(dt->d.y);
+}
+
 uint32_t days_in_month(Year y, Month m) {
 	const uint32_t __dim[] =
 		{ 0UL, 31UL, 28UL, 31UL, 30UL, 31UL, 30UL, 31UL, 31UL,
@@ -63,6 +68,11 @@ int32_t julian_date(const Date* d) {
 		break;
 		}
 	return(__julian_date_base(d));
+}
+
+int32_t julian_date(const DateTime* dt) {
+	NOT_NULL_OR_RETURN(dt, 0);
+	return julian_date(&dt->d);
 }
 
 Calendar effective_calendar_for_date(const Date* d) {
@@ -139,11 +149,21 @@ uint32_t days_in_month_cal(Year y, Month m, Calendar c) {
 }
 
 uint32_t date_to_yyyymmdd(const Date* d) {
+	NOT_NULL_OR_RETURN(d, 0);
 	return (d->y * 10000UL + d->m * 100UL + d->d);
+}
+
+uint32_t datetime_to_yyyymmdd(const DateTime* dt) {
+	NOT_NULL_OR_RETURN(dt, 0);
+	return date_to_yyyymmdd(&dt->d);
 }
 
 Weekday weekday(const Date* d) {
 	return (Weekday)(julian_date(d) % 7);
+}
+
+Weekday weekday(const DateTime* dt) {
+	return weekday(&dt->d);
 }
 
 Weekday weekday_from_julian_date(int32_t jd) {
@@ -177,11 +197,17 @@ Weekday weekday_yyyymmdd(int yyyymmdd) {
 }
 
 int yyyymmdd_to_date(const int yyyymmdd, Date* d) {
+	NOT_NULL_OR_RETURN(d, 0);
 	d->y = (Year)(yyyymmdd / 10000);
 	d->m = (Month)((yyyymmdd / 100) % 100);
 	d->d = (Day)(yyyymmdd % 100);
 	d->c = calendar_Auto;
 	return valid_date(d);
+}
+
+int yyyymmdd_to_datetime(int yyyymmdd, DateTime* dt) {
+	NOT_NULL_OR_RETURN(dt, 0);
+	return yyyymmdd_to_date(yyyymmdd, &dt->d);
 }
 
 int yyyymmdd_year(int yyyymmdd) {
@@ -240,6 +266,10 @@ uint32_t days_in_month_date(const Date* d) {
 
 int days_difference(const Date* d1, const Date* d2) {
 	return julian_date(d2) - julian_date(d1);
+}
+
+int days_difference(const DateTime* d1, const DateTime* d2) {
+	return days_difference(&d1->d, &d2->d);
 }
 
 int days_difference_yyyymmdd(const int d1, const int d2) {
@@ -440,6 +470,11 @@ extern uint32_t julian_day_of_year(const Date* d) {
 	return days_difference(&dd, d);
 }
 
+uint32_t julian_day_of_year(const DateTime* dt) {
+	NOT_NULL_OR_RETURN(dt, 0);
+	return julian_day_of_year(&dt->d);
+}
+
 int64_t full_seconds_difference_ft(const FullTime *f1, const FullTime *f2) {
 	// TODO: TBI
 	assert(false);
@@ -493,6 +528,7 @@ void get_current_datetime(DateTime* dt) {
 }
 
 void set_julian_date(Date *d, const int32_t jd) {
+	NOT_NULL_OR_RETURN_VOID(d);
 	switch (d->c)
 		{
 	default:
@@ -508,6 +544,11 @@ void set_julian_date(Date *d, const int32_t jd) {
 		jdn_to_ymd(jd, (int*)&d->y, (int*)&d->m, (int*)&d->d, -1, 0);
 		break;
 		}
+}
+
+void set_julian_date(DateTime *dt, const int32_t jd) {
+	NOT_NULL_OR_RETURN_VOID(dt);
+	set_julian_date(&dt->d, jd);
 }
 
 void change_datetime(DateTime* dt, const int nsec) {
@@ -946,17 +987,35 @@ int day_of_year_yyyymmdd(const int date) {
 
 int day_of_year(const Date* date) {
 	// TODO: use the Calendar object!
+	NOT_NULL_OR_RETURN(date, -1);
 	return (day_of_year_mdy(date->m, date->d, date->y));
 }
 
+int day_of_year(const DateTime* date) {
+	NOT_NULL_OR_RETURN(date, -1);
+	return day_of_year(&date->d);
+}
+
 void julian_to_date(u32 jdate, Date* date_output) {
+	NOT_NULL_OR_RETURN_VOID(date_output);
 	set_julian_date(date_output, jdate);
 }
 
+void julian_to_date(u32 jdate, DateTime* date_output) {
+	NOT_NULL_OR_RETURN_VOID(date_output);
+	julian_to_date(jdate, &date_output->d);
+}
+
 void add_days(Date* date, i32 num_days) {
+	NOT_NULL_OR_RETURN_VOID(date);
 	int jd = julian_date(date);
 	jd += num_days;
 	julian_to_date(jd, date);
+}
+
+void add_days(DateTime* date, i32 num_days) {
+	NOT_NULL_OR_RETURN_VOID(date);
+	add_days(&date->d, num_days);
 }
 
 void next_weekday(const Date* in_date, Date* out_date) {
@@ -1029,7 +1088,13 @@ void prev_weekday_mdy(const Month m, const Day d, const Year y,
 	yyyymmdd_to_mdy(yyyymmdd, mout, dout, yout);
 }
 
+void holiday(Holiday hol, Year y, DateTime* date_out) {
+	NOT_NULL_OR_RETURN_VOID(date_out);
+	holiday(hol, y, &date_out->d);
+}
+
 void holiday(Holiday holiday, Year y, Date* date_out) {
+	NOT_NULL_OR_RETURN_VOID(date_out);
 	date_out->y = y;
 
 #define	MD(_m, _d)	date_out->m = (Month)_m; date_out->d = (Day)_d; break
