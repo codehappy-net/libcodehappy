@@ -136,6 +136,9 @@ private:
 			} else {
 				--obj.weight;
 				--weight;
+				if (obj.weight > 0 && (i64) obj.weight != base_w) {
+					base_w = -1;
+				}
 			}
 		}
 		return obj.obj;
