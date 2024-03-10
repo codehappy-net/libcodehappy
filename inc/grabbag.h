@@ -29,16 +29,22 @@ public:
 		weight = 0U;
 		replace = true;
 		remove_entirely = false;
+		base_w = 0;
         }
 
 	/* Insert a copy of obj into the grab bag with weight item_weight. */
-	void Insert(const _T_& obj, u32 item_weight) {
+	void Insert(const _T_& obj, u32 item_weight = 1) {
 		GrabBagObj<_T_> ins;
 		ScopeMutex sm(m);
 		ins.obj = obj;
 		ins.weight = item_weight;
 		bag.push_back(ins);
 		weight += item_weight;
+		if (base_w == 0) {
+			base_w = (i64) item_weight;
+		} else if ((i64) item_weight != base_w && item_weight != 0) {
+			base_w = -1;
+		}
         }
 
 	/* Return whether the grab bag selects with replacement. */
@@ -58,14 +64,27 @@ public:
 	/* Select an object at random, according to weights. */
 	_T_ Select(void) {
 		if (!Empty()) {
-			u32 sel = RandU32Range(0, weight - 1);
-			ScopeMutex sm(m);
-
-			for (auto& obj : bag) {
-				if (obj.weight > sel) {
-					return DoSelect(obj);
+			if (base_w > 0) {
+				/* easy case, all inserted objects have the same weight. */
+				ScopeMutex sm(m);
+				forever {
+					u32 sel = RandU32Range(0, bag.size() - 1);
+					if (bag[sel].weight > 0) {
+						return DoSelect(bag[sel]);
+					}
 				}
-				sel -= obj.weight;
+			} else {
+				/* hard case, have to iterate the bag to find the correct position to select from.
+				   TODO: keep an array of running weights that we can binary search, or an index for fast access? */
+				u32 sel = RandU32Range(0, weight - 1);
+				ScopeMutex sm(m);
+
+				for (auto& obj : bag) {
+					if (obj.weight > sel) {
+						return DoSelect(obj);
+					}
+					sel -= obj.weight;
+				}
 			}
 		}
 		// return the default _T_ on a selection from an empty grab bag.
@@ -90,6 +109,7 @@ public:
 		ScopeMutex sm(m);
 		bag.clear();
 		weight = 0;
+		base_w = 0;
 	}
 
 	/* Is the grab bag empty? */
@@ -104,6 +124,7 @@ public:
 		SWAP(weight, gb.weight, u32);
 		SWAP(replace, gb.replace, bool);
 		SWAP(remove_entirely, gb.remove_entirely, bool);
+		SWAP(base_w, gb.base_w, i64);
 	}
 
 private:
@@ -124,6 +145,7 @@ private:
 	u32 weight;
 	bool replace;
 	bool remove_entirely;
+	i64 base_w;
 	std::mutex m;
 };
 
