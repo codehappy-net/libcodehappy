@@ -135,6 +135,7 @@ extern int isleapyear_cal(Year y, Calendar c);
 /*** the number of days in a (Gregorian calendar) year ***/
 extern uint32_t days_in_year(Year y);
 extern uint32_t days_in_year_date(const Date* d);
+extern u32 days_in_year(const DateTime* dt);
 
 /*** the number of days in a year of the specified calendar ***/
 extern uint32_t days_in_year_cal(Year y, Calendar c);
@@ -148,6 +149,7 @@ extern uint32_t days_in_month_cal(Year y, Month m, Calendar c);
 
 /*** Return Julian date. Use the calendar specified by the Date object. ***/
 extern int32_t julian_date(const Date* d);
+extern int32_t julian_date(const DateTime* dt);
 
 /*** Return a Julian date from a yyyymmdd date. ***/
 extern int32_t yyyymmdd_to_julian(const int yyyymmdd);
@@ -169,12 +171,15 @@ int32_t mdy_to_yyyymmdd(const Month m, const Day d, const Year y);
 
 /*** Return the date as an integer in YYYYMMDD form ***/
 extern uint32_t date_to_yyyymmdd(const Date* d);
+extern uint32_t datetime_to_yyyymmdd(const DateTime* dt);
 
 /*** Fill a Date structure from a yyyymmdd date; return 1 on success. ***/
 extern int yyyymmdd_to_date(const int yyyymmdd, Date* d);
+extern int yyyymmdd_to_datetime(int yyyymmdd, DateTime* dt);
 
 /*** Return the day of the week ***/
 extern Weekday weekday(const Date* d);
+extern Weekday weekday(const DateTime* dt);
 extern Weekday weekday_from_mdy(Month m, Day d, Year y);
 extern Weekday weekday_yyyymmdd(int yyyymmdd);
 extern Weekday weekday_from_julian_date(int32_t jd);
@@ -189,6 +194,7 @@ extern int valid_date(int yyyymmdd);
 /*** Determine the difference between two dates, in days. ***/
 /*** This is effectively d2 - d1, so negative # of days is possible. ***/
 extern int days_difference(const Date* d1, const Date* d2);
+extern int days_difference(const DateTime* d1, const DateTime* d2);
 extern int days_difference_yyyymmdd(const int d1, const int d2);
 
 /*** Determine the difference between two dates, in years. ***/
@@ -239,6 +245,7 @@ extern int64_t unix_epoch_usec_ft(const FullTime* ft);
 
 /*** Return the Julian day of the year (Jan. 1 = 1, Feb. 1 = 32, etc.) ***/
 extern uint32_t julian_day_of_year(const Date* d);
+extern uint32_t julian_day_of_year(const DateTime* dt);
 
 /*** Normalize a Time or DateTime object to use UTC timezone ***/
 extern void normalize_tz_dt(DateTime* dt);
@@ -256,6 +263,7 @@ extern void get_current_datetime(DateTime* dt);
 /*** Set the Date from the passed-in Julian date. Uses the calendar
 	on the Date. ***/
 extern void set_julian_date(Date *d, const int32_t jd);
+extern void set_julian_date(DateTime *dt, const int32_t jd);
 
 /***
 	Formats the specified DateTime as a string in the given	
@@ -350,6 +358,7 @@ extern int last_weekday_in_month(Date* d, Weekday wd);
 /*** Return the day of the year for the specified date: Jan. 1 is 1, Dec. 31 is 365 or 366 ***/
 // Note: these functions are faster than julian_day_of_year() -- deprecate the latter?
 extern int day_of_year(const Date* date);
+extern int day_of_year(const DateTime* date);
 extern int day_of_year_yyyymmdd(const int date);
 extern int day_of_year_mdy(const Month m, const Day d, const Year y);
 
@@ -365,11 +374,14 @@ extern void prev_weekday_mdy(const Month m, const Day d, const Year y,
 
 /*** Fill the Date object from the given Julian date ***/
 extern void julian_to_date(u32 jdate, Date* date_output);
+extern void julian_to_date(u32 jdate, DateTime* date_output);
 
 /*** Add days to the specified Date object ***/
 extern void add_days(Date* date, i32 num_days);
+extern void add_days(DateTime* date, i32 num_days);
 
 /*** Returns the Date for the specified Holiday in the given Year. ***/
 extern void holiday(Holiday holiday, Year y, Date* date_out);
+extern void holiday(Holiday holiday, Year y, DateTime* date_out);
 
 #endif // CALENDAR_H
