@@ -2043,10 +2043,6 @@ SBitmap* SBitmap::load_bmp(const char* fname) {
 	pixel_data = stbi_load(fname, &x, &y, &comp, 4);
 	if (is_null(pixel_data))
 		return(nullptr);
-	if (comp < 3) {
-		stbi_image_free(pixel_data);
-		return(nullptr);
-	}
 
 	bmp_ret = new SBitmap(x, y);
 	if (bmp_ret != nullptr) {
@@ -2066,10 +2062,6 @@ SBitmap* SBitmap::load_bmp(RamFile* rf) {
 	pixel_data = stbi_load_from_memory((unsigned char*) rf->buffer(), (int) rf->length(), &x, &y, &comp, 4);
 	if (is_null(pixel_data))
 		return(nullptr);
-	if (comp < 3) {
-		stbi_image_free(pixel_data);
-		return(nullptr);
-	}
 
 	bmp_ret = new SBitmap(x, y);
 	if (bmp_ret != nullptr) {
