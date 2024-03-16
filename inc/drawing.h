@@ -513,6 +513,16 @@ public:
 	void render_text(const char* str, ttfont* f, RGBColor c, u32 desired_height, u32 center_align_flags);
 	void render_text(const std::string& str, Font* f, RGBColor c, u32 desired_height, u32 center_align_flags);
 	void render_text(const std::string& str, ttfont* f, RGBColor c, u32 desired_height, u32 center_align_flags);
+	/* UTF-32 versions of the above */
+	void render_utext(const ustring str, const SCoord& rect, Font* f, RGBColor c, u32 desired_height, u32 center_align_flags);
+	void render_utext(const ustring str, const SCoord& rect, ttfont* f, RGBColor c, u32 desired_height, u32 center_align_flags);
+	void render_utext(const std::string& str, const SCoord& rect, Font* f, RGBColor c, u32 desired_height, u32 center_align_flags);
+	void render_utext(const std::string& str, const SCoord& rect, ttfont* f, RGBColor c, u32 desired_height, u32 center_align_flags);
+	void render_utext(const ustring str, Font* f, RGBColor c, u32 desired_height, u32 center_align_flags);
+	void render_utext(const ustring str, ttfont* f, RGBColor c, u32 desired_height, u32 center_align_flags);
+	void render_utext(const std::string& str, Font* f, RGBColor c, u32 desired_height, u32 center_align_flags);
+	void render_utext(const std::string& str, ttfont* f, RGBColor c, u32 desired_height, u32 center_align_flags);
+
 
 	/* Distance between two bitmaps. The two bitmaps must be the same dimensions. */
 	/* Uses 1-D earth mover's distance, full calculation. */

@@ -5205,6 +5205,106 @@ void SBitmap::render_text(const std::string& str, ttfont* f, RGBColor c, u32 des
 	render_text(str.c_str(), co, &ft, c, desired_height, center_align_flags);
 }
 
+void SBitmap::render_utext(const ustring str, const SCoord& rect, Font* f, RGBColor c, u32 desired_height, u32 center_align_flags) {
+	SBitmap* render;
+	int x = rect.X1(this), y = rect.Y1(this);
+	u32 sz;
+	u32 slen = ustrlen(str);
+	const u32 BITFONT_CHAR_W = 9;
+	const u32 BITFONT_CHAR_H = 6;
+
+	if (is_null(f)) {
+		/* bitfont doesn't support UTF-32, convert to a C string. */
+		u32 sx, sy;
+		char* convstr = ustr2str(str, ' ', nullptr);
+		sz = desired_height >> 3;
+		sx = (BITFONT_CHAR_W * slen * sz);
+		sy = (BITFONT_CHAR_H * slen * sz);
+		render = new SBitmap(sx, sy, BITMAP_GRAYSCALE);
+		render->clear(C_BLACK);
+		render->putstr_bitfont(convstr, 0, 0, sz, C_WHITE);
+		delete convstr;
+	} else {
+		sz = f->font_size_for_height(desired_height);
+		render = f->render_ustr(str, sz, false, nullptr);
+	}
+
+	if (!iszero(center_align_flags & CENTERED_BOTH)) {
+		if (center_align_flags & CENTERED_HORIZ) {
+			x = rect.center_X(this);
+			x -= render->width() / 2;
+		}
+		if (center_align_flags & CENTERED_VERT) {
+			y = rect.center_Y(this);
+			y -= render->height() / 2;
+		}
+	}
+	if (!iszero(center_align_flags & ALIGN_TOP)) {
+		y = rect.Y1(this) + 2;
+	}
+	if (!iszero(center_align_flags & ALIGN_BOTTOM)) {
+		y = rect.Y2(this) - (2 + render->height());
+	}
+	if (!iszero(center_align_flags & ALIGN_LEFT)) {
+		x = rect.X1(this) + 2;
+	}
+	if (!iszero(center_align_flags & ALIGN_RIGHT)) {
+		x = rect.X2(this) - (2 + render->width());
+	}
+
+	Font::blit(render, this, x, y, c);
+
+	delete render;
+}
+
+void SBitmap::render_utext(const ustring str, const SCoord& rect, ttfont* f, RGBColor c, u32 desired_height, u32 center_align_flags) {
+	Font ft(f);
+	render_utext(str, rect, &ft, c, desired_height, center_align_flags);
+}
+
+void SBitmap::render_utext(const std::string& str, const SCoord& rect, Font* f, RGBColor c, u32 desired_height, u32 center_align_flags) {
+	ustring utf32str = utf8_to_utf32((const utf8string) str.c_str());
+	render_utext(utf32str, rect, f, c, desired_height, center_align_flags);
+	delete utf32str;
+}
+
+void SBitmap::render_utext(const std::string& str, const SCoord& rect, ttfont* f, RGBColor c, u32 desired_height, u32 center_align_flags) {
+	Font ft(f);
+	ustring utf32str = utf8_to_utf32((const utf8string) str.c_str());
+	render_utext(utf32str, rect, &ft, c, desired_height, center_align_flags);
+	delete utf32str;
+}
+
+void SBitmap::render_utext(const ustring str, Font* f, RGBColor c, u32 desired_height, u32 center_align_flags) {
+	SCoord co;
+	rect_bitmap(&co);
+	render_utext(str, co, f, c, desired_height, center_align_flags);
+}
+
+void SBitmap::render_utext(const ustring str, ttfont* f, RGBColor c, u32 desired_height, u32 center_align_flags) {
+	SCoord co;
+	rect_bitmap(&co);
+	Font ft(f);
+	render_utext(str, co, &ft, c, desired_height, center_align_flags);
+}
+
+void SBitmap::render_utext(const std::string& str, Font* f, RGBColor c, u32 desired_height, u32 center_align_flags) {
+	SCoord co;
+	ustring utf32str = utf8_to_utf32((const utf8string) str.c_str());
+	rect_bitmap(&co);
+	render_utext(utf32str, co, f, c, desired_height, center_align_flags);
+	delete utf32str;
+}
+
+void SBitmap::render_utext(const std::string& str, ttfont* f, RGBColor c, u32 desired_height, u32 center_align_flags) {
+	SCoord co;
+	ustring utf32str = utf8_to_utf32((const utf8string) str.c_str());
+	rect_bitmap(&co);
+	Font ft(f);
+	render_utext(utf32str, co, &ft, c, desired_height, center_align_flags);
+	delete utf32str;
+}
+
 void SBitmap::out_channel_rf(RamFile* rf, u32 idx) {
 	for (u32 y = 0; y < h; ++y) {
 		for (u32 x = 0; x < w; ++x) {
