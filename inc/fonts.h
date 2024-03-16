@@ -304,6 +304,9 @@ extern ttfont font_aunt_judy;
 extern ttfont font_american_uncial;
 extern ttfont font_bellbottom;
 
+/*** Source Han Serif JP: a serif font covering the CJK ideographs block (IPA Gothic does too, but is sans.) ***/
+extern ttfont font_source_han_serif_jp;
+
 /***************************************************************************************************/
 /***************************************************************************************************/
 /***************************************************************************************************/

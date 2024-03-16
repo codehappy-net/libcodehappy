@@ -154,6 +154,7 @@
 #include "auntjudy.cpp"
 #include "bellbottom.cpp"
 #include "ameruncial.cpp"
+#include "source-han-serif-jp.cpp"
 
 #endif  // ALL_FONTS
 
