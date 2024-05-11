@@ -8,13 +8,12 @@
 
 ***/
 #define CODEHAPPY_NATIVE
-#define CODEHAPPY_CUDA
 #include <libcodehappy.h>
 
 int app_main() {
 	ArgParse ap;
 	std::string img_path;
-	
+
 	llama_defaults.temp = 0.1;
 	llama_args(ap);
 	ap.ensure_args(argc, argv);

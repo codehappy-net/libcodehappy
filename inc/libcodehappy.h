@@ -444,8 +444,8 @@ private:
 #define SD_USE_CUBLAS
 #endif
 #include "external/stable-diffusion/stable-diffusion.h"
-#include "external/stable-diffusion/rng.h"
-#include "external/stable-diffusion/rng_philox.h"
+#include "external/stable-diffusion/rng.hpp"
+#include "external/stable-diffusion/rng_philox.hpp"
 #include "external/stable-diffusion/model.h"
 #include "external/stable-diffusion/util.h"
 

@@ -1,8 +1,9 @@
 #define _USE_MATH_DEFINES // for M_PI
-#define _CRT_SECURE_NO_DEPRECATE // Disables ridiculous "unsafe" warnings on Windows
+#define _CRT_SECURE_NO_DEPRECATE // Disables ridiculous "unsafe" warnigns on Windows
 
 #include "ggml.h"
 #include "ggml-alloc.h"
+#include "ggml-backend.h"
 //#define STB_IMAGE_IMPLEMENTATION
 //#include "stb_image.h"
 //#define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -40,7 +41,7 @@ struct sam_hparams {
     int32_t n_dec_heads               = 8;
     int32_t ftype                     = 1;
     float   mask_threshold            = 0.f;
-    float   iou_threshold             = 0.80f;
+    float   iou_threshold             = 0.88f;
     float   stability_score_threshold = 0.95f;
     float   stability_score_offset    = 1.0f;
     float   eps                       = 1e-6f;
@@ -251,13 +252,11 @@ struct sam_state {
     // buffer for `ggml_graph_plan.work_data`
     std::vector<uint8_t> work_buffer;
     // buffers to evaluate the model
-    std::vector<uint8_t> buf_alloc_img_enc;
     std::vector<uint8_t> buf_compute_img_enc;
 
-    std::vector<uint8_t> buf_alloc_fast;
     std::vector<uint8_t> buf_compute_fast;
 
-    struct ggml_allocr  * allocr = {};
+    ggml_gallocr_t       allocr = {};
 };
 
 // void save_tensor(sam_state& state, struct ggml_tensor * t, struct ggml_cgraph * gf) {
@@ -310,7 +309,7 @@ struct sam_params {
     std::string fname_inp = "img.jpg";
     std::string fname_out = "img.out";
     float   mask_threshold            = 0.f;
-    float   iou_threshold             = 0.80f;
+    float   iou_threshold             = 0.88f;
     float   stability_score_threshold = 0.95f;
     float   stability_score_offset    = 1.0f;
     float   eps                       = 1e-6f;
@@ -319,7 +318,6 @@ struct sam_params {
 };
 
 void print_t_f32(const char* title, struct ggml_tensor * t, int n = 10) {
-#ifdef CODEHAPPY_DEBUG
     printf("%s\n", title);
     float * data = (float *)t->data;
     printf("dims: % " PRId64 " % " PRId64 " % " PRId64 " % " PRId64 " f32\n", t->ne[0], t->ne[1], t->ne[2], t->ne[3]);
@@ -343,7 +341,6 @@ void print_t_f32(const char* title, struct ggml_tensor * t, int n = 10) {
         sum += data[i];
     }
     printf("sum:  %f\n\n", sum);
-#endif  // CODEHAPPY_DEBUG
 }
 
 static void ggml_disconnect_node_from_graph(ggml_tensor * t) {
@@ -533,13 +530,13 @@ bool sam_model_load(const sam_params & params, sam_model & model) {
 
         const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
 
-        SAM_FPRINTF(stdout, "%s: n_enc_state      = %d\n", __func__, hparams.n_enc_state);
-        SAM_FPRINTF(stdout, "%s: n_enc_layer      = %d\n", __func__, hparams.n_enc_layer);
-        SAM_FPRINTF(stdout, "%s: n_enc_head       = %d\n", __func__, hparams.n_enc_head);
-        SAM_FPRINTF(stdout, "%s: n_enc_out_chans  = %d\n", __func__, hparams.n_enc_out_chans);
-        SAM_FPRINTF(stdout, "%s: n_pt_embd        = %d\n", __func__, hparams.n_pt_embd);
-        SAM_FPRINTF(stdout, "%s: ftype            = %d\n", __func__, hparams.ftype);
-        SAM_FPRINTF(stdout, "%s: qntvr            = %d\n", __func__, qntvr);
+        printf("%s: n_enc_state      = %d\n", __func__, hparams.n_enc_state);
+        printf("%s: n_enc_layer      = %d\n", __func__, hparams.n_enc_layer);
+        printf("%s: n_enc_head       = %d\n", __func__, hparams.n_enc_head);
+        printf("%s: n_enc_out_chans  = %d\n", __func__, hparams.n_enc_out_chans);
+        printf("%s: n_pt_embd        = %d\n", __func__, hparams.n_pt_embd);
+        printf("%s: ftype            = %d\n", __func__, hparams.ftype);
+        printf("%s: qntvr            = %d\n", __func__, qntvr);
 
         hparams.ftype %= GGML_QNT_VERSION_FACTOR;
 
@@ -1124,28 +1121,15 @@ struct ggml_tensor * sam_fill_dense_pe(
     const auto & hparams = model.hparams;
     const auto & enc     = model.enc_prompt;
 
+
     const int32_t n_img_embd = hparams.n_img_embd();
-    const float n_img_embd_inv = 1.0f / n_img_embd;
-
     struct ggml_tensor * xy_embed_stacked = ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, 2, n_img_embd, n_img_embd);
-    ggml_allocr_alloc(state.allocr, xy_embed_stacked);
-
-    if (!ggml_allocr_is_measure(state.allocr)) {
-        float * data = (float *) ggml_get_data(xy_embed_stacked);
-        for (int i = 0; i < n_img_embd; ++i) {
-            const int row = 2*i*n_img_embd;
-            const float y_val = 2 * (i + 0.5f) * n_img_embd_inv - 1;
-            for (int j = 0; j < n_img_embd; ++j) {
-                const float x_val = 2 * (j + 0.5f) * n_img_embd_inv - 1;
-                data[row + 2*j + 0] = x_val;
-                data[row + 2*j + 1] = y_val;
-            }
-        }
-    }
+    ggml_set_name(xy_embed_stacked, "xy_embed_stacked");
+    ggml_set_input(xy_embed_stacked);
 
     struct ggml_tensor * cur = ggml_mul_mat(ctx0, ggml_cont(ctx0, ggml_transpose(ctx0, enc.pe)), xy_embed_stacked);
 
-    cur = ggml_scale(ctx0, cur, ggml_new_f32(ctx0, float(2.0*M_PI)));
+    cur = ggml_scale(ctx0, cur, float(2.0*M_PI));
 
     // concat
     // ref: https://github.com/facebookresearch/segment-anything/blob/main/segment_anything/modeling/prompt_encoder.py#L192
@@ -1214,24 +1198,8 @@ struct ggml_cgraph  * sam_encode_image(
     struct ggml_cgraph  * gf     = ggml_new_graph(ctx0);
 
     struct ggml_tensor * inp = ggml_new_tensor_4d(ctx0, GGML_TYPE_F32, n_img_size, n_img_size, 3, 1);
-    ggml_allocr_alloc(state.allocr, inp);
-    if (!ggml_allocr_is_measure(state.allocr)) {
-        float * data = (float *) ggml_get_data(inp);
-
-        const int nx = img.nx;
-        const int ny = img.ny;
-        const int n  = nx*ny;
-
-        GGML_ASSERT(nx == n_img_size && ny == n_img_size);
-
-        for (int k = 0; k < 3; k++) {
-            for (int y = 0; y < ny; y++) {
-                for (int x = 0; x < nx; x++) {
-                    data[k*n + y*nx + x] = img.data[3*(y*nx + x) + k];
-                }
-            }
-        }
-    }
+    ggml_set_name(inp, "inp");
+    ggml_set_input(inp);
 
     // ref: https://github.com/facebookresearch/segment-anything/blob/main/segment_anything/modeling/image_encoder.py#L392
     struct ggml_tensor * cur = ggml_conv_2d_sk_p0(ctx0, enc.proj_w, inp);
@@ -1315,7 +1283,7 @@ struct ggml_cgraph  * sam_encode_image(
             struct ggml_tensor * KQ_scaled =
                 ggml_scale_inplace(ctx0,
                         KQ,
-                        ggml_new_f32(ctx0, 1.0f/sqrtf(n_enc_head_dim)));
+                        1.0f/sqrtf(n_enc_head_dim));
 
             struct ggml_tensor * rw = ggml_get_rel_pos(ctx0, layer.rel_pos_w, W, W);
             struct ggml_tensor * rh = ggml_get_rel_pos(ctx0, layer.rel_pos_h, H, H);
@@ -1401,6 +1369,27 @@ struct ggml_cgraph  * sam_encode_image(
 
     ggml_free(ctx0);
 
+    ggml_gallocr_alloc_graph(state.allocr, gf);
+
+    {
+        struct ggml_tensor * inp = ggml_graph_get_tensor(gf, "inp");
+        float * data = (float *) ggml_get_data(inp);
+
+        const int nx = img.nx;
+        const int ny = img.ny;
+        const int n  = nx*ny;
+
+        GGML_ASSERT(nx == n_img_size && ny == n_img_size);
+
+        for (int k = 0; k < 3; k++) {
+            for (int y = 0; y < ny; y++) {
+                for (int x = 0; x < nx; x++) {
+                    data[k*n + y*nx + x] = img.data[3*(y*nx + x) + k];
+                }
+            }
+        }
+    }
+
     return gf;
 }
 
@@ -1422,47 +1411,19 @@ prompt_encoder_result sam_encode_prompt(
         const sam_model     & model,
         struct ggml_context * ctx0,
         struct ggml_cgraph  * gf,
-                  sam_state & state,
-                        int   nx,
-                        int   ny,
-                  sam_point   point) {
+                  sam_state & state) {
 
     const auto & hparams = model.hparams;
     const auto & enc = model.enc_prompt;
 
-    // transform points
-    // ref: https://github.com/facebookresearch/segment-anything/blob/main/segment_anything/automatic_mask_generator.py#L276
-    {
-        const int nmax = std::max(nx, ny);
-
-        const float scale = hparams.n_img_size() / (float) nmax;
-
-        const int nx_new = int(nx*scale + 0.5f);
-        const int ny_new = int(ny*scale + 0.5f);
-
-        point.x = point.x*(float(nx_new)/nx) + 0.5f;
-        point.y = point.y*(float(ny_new)/ny) + 0.5f;
-    }
-
     struct ggml_tensor * inp = ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, 2, 2);
+    ggml_set_name(inp, "prompt_input");
+    ggml_set_input(inp);
 
-    ggml_allocr_alloc(state.allocr, inp);
-    if (!ggml_allocr_is_measure(state.allocr)) {
-        // set the input by converting the [0, 1] coordinates to [-1, 1]
-        float * data = (float *) inp->data;
-
-        data[0] = 2.0f*(point.x / hparams.n_img_size()) - 1.0f;
-        data[1] = 2.0f*(point.y / hparams.n_img_size()) - 1.0f;
-
-        // padding
-        // ref: https://github.com/facebookresearch/segment-anything/blob/main/segment_anything/modeling/prompt_encoder.py#L81-L85
-        data[2] = 2.0f*(0.0f) - 1.0f;
-        data[3] = 2.0f*(0.0f) - 1.0f;
-    }
 
     struct ggml_tensor * cur = ggml_mul_mat(ctx0, ggml_cont(ctx0, ggml_transpose(ctx0, enc.pe)), inp);
 
-    cur = ggml_scale(ctx0, cur, ggml_new_f32(ctx0, float(2.0*M_PI)));
+    cur = ggml_scale(ctx0, cur, float(2.0*M_PI));
 
     // concat
     // ref: https://github.com/facebookresearch/segment-anything/blob/main/segment_anything/modeling/prompt_encoder.py#L192
@@ -1544,7 +1505,7 @@ struct ggml_tensor* sam_decode_mask_transformer_attn(
     // Q * K
     struct ggml_tensor * KQ = ggml_mul_mat(ctx0, K, Q);
 
-    struct ggml_tensor * KQ_scaled = ggml_scale_inplace(ctx0, KQ, ggml_new_f32(ctx0, 1.0f/sqrt(float(Q->ne[0]))));
+    struct ggml_tensor * KQ_scaled = ggml_scale_inplace(ctx0, KQ, 1.0f/sqrt(float(Q->ne[0])));
 
     struct ggml_tensor * KQ_soft_max = ggml_soft_max_inplace(ctx0, KQ_scaled);
 
@@ -1765,7 +1726,6 @@ bool sam_decode_mask(
     {
         // ConvTranspose2d
         keys = ggml_conv_transpose_2d_p0(ctx0, dec.output_upscaling_0_w, keys, 2);
-        ggml_allocr_alloc(state.allocr, keys); // TODO: This alloc shouldn't be needed
         keys = ggml_add_inplace(ctx0, keys, ggml_repeat(ctx0,
                                      ggml_reshape_3d(ctx0, dec.output_upscaling_0_b, 1, 1, dec.output_upscaling_0_b->ne[0]),
                                      keys));
@@ -1777,7 +1737,6 @@ bool sam_decode_mask(
 
         // ConvTranspose2d
         keys = ggml_conv_transpose_2d_p0(ctx0, dec.output_upscaling_3_w, keys, 2);
-        ggml_allocr_alloc(state.allocr, keys); // TODO: This alloc shouldn't be needed
         keys = ggml_add_inplace(ctx0, ggml_repeat(ctx0,
                                 ggml_reshape_3d(ctx0, dec.output_upscaling_3_b, 1, 1, dec.output_upscaling_3_b->ne[0]),
                                 keys), keys);
@@ -1820,6 +1779,7 @@ bool sam_decode_mask(
     return true;
 }
 
+// CMS: we write the masks to bmps_out.
 bool sam_write_masks(const sam_hparams& hparams, int nx, int ny, const sam_state & state, bitmap_masks* bmps_out) {
     if (state.low_res_masks->ne[2] == 0) return true;
     if (state.low_res_masks->ne[2] != state.iou_predictions->ne[0]) {
@@ -1853,13 +1813,14 @@ bool sam_write_masks(const sam_hparams& hparams, int nx, int ny, const sam_state
 
     const auto iou_data = (float*)state.iou_predictions->data;
 
+    // CMS: allocate bmps_out
     bmps_out->masks = new bitmap_mask [ne2];
     bmps_out->nmasks = 0;
 
     for (int i = 0; i < ne2; ++i) {
         // CMS: let's not filter here, we can do it in the SegmentAnything class if desired.
         //if (iou_threshold > 0.f && iou_data[i] < iou_threshold) {
-        //    fprintf(stdout, "Skipping mask %d with iou %f below threshold %f\n", i, iou_data[i], iou_threshold);
+        //    printf("Skipping mask %d with iou %f below threshold %f\n", i, iou_data[i], iou_threshold);
         //    continue; // Filtering masks with iou below the threshold
         //}
 
@@ -1965,13 +1926,14 @@ bool sam_write_masks(const sam_hparams& hparams, int nx, int ny, const sam_state
         const float stability_score = float(intersections) / float(unions);
         // CMS: let's not filter here, we can do it in the SegmentAnything class if desired.
         //if (stability_score_threshold > 0.f && stability_score < stability_score_threshold) {
-        //    fprintf(stdout, "Skipping mask %d with stability score %f below threshold %f\n", i, stability_score, stability_score_threshold);
+        //    printf("Skipping mask %d with stability score %f below threshold %f\n", i, stability_score, stability_score_threshold);
         //    continue; // Filtering masks with stability score below the threshold
         //}
 
         //printf("Mask %d: iou = %f, stability_score = %f, bbox (%d, %d), (%d, %d)\n",
         //        i, iou_data[i], stability_score, min_ix, max_ix, min_iy, max_iy);
 
+	// CMS: output masks in bmps_out
 	bmps_out->masks[bmps_out->nmasks].bmp = new SBitmap(bmps_out->nx, bmps_out->ny, BITMAP_MONO);
 	bmps_out->masks[bmps_out->nmasks].x_min = min_ix;
 	bmps_out->masks[bmps_out->nmasks].x_max = max_ix;
@@ -1998,6 +1960,7 @@ bool sam_write_masks(const sam_hparams& hparams, int nx, int ny, const sam_state
         //}
     }
 
+
     return true;
 }
 
@@ -2017,7 +1980,7 @@ struct ggml_cgraph  * sam_build_fast_graph(
     struct ggml_context * ctx0   = ggml_init(ggml_params);
     struct ggml_cgraph  * gf     = ggml_new_graph(ctx0);
 
-    prompt_encoder_result enc_res = sam_encode_prompt(model, ctx0, gf, state, nx, ny, point);
+    prompt_encoder_result enc_res = sam_encode_prompt(model, ctx0, gf, state);
     if (!enc_res.embd_prompt_sparse || !enc_res.embd_prompt_dense) {
         SAM_FPRINTF(stderr, "%s: failed to encode prompt (%f, %f)\n", __func__, point.x, point.y);
         return {};
@@ -2035,6 +1998,54 @@ struct ggml_cgraph  * sam_build_fast_graph(
     }
 
     ggml_free(ctx0);
+
+    ggml_gallocr_alloc_graph(state.allocr, gf);
+
+    // from sam_encode_prompt
+    {
+        // transform points
+        // ref: https://github.com/facebookresearch/segment-anything/blob/main/segment_anything/automatic_mask_generator.py#L276
+        {
+            const int nmax = std::max(nx, ny);
+
+            const float scale = model.hparams.n_img_size() / (float) nmax;
+
+            const int nx_new = int(nx*scale + 0.5f);
+            const int ny_new = int(ny*scale + 0.5f);
+
+            point.x = point.x*(float(nx_new)/nx) + 0.5f;
+            point.y = point.y*(float(ny_new)/ny) + 0.5f;
+        }
+
+        struct ggml_tensor * inp = ggml_graph_get_tensor(gf, "prompt_input");
+        // set the input by converting the [0, 1] coordinates to [-1, 1]
+        float * data = (float *) inp->data;
+
+        data[0] = 2.0f*(point.x / model.hparams.n_img_size()) - 1.0f;
+        data[1] = 2.0f*(point.y / model.hparams.n_img_size()) - 1.0f;
+
+        // padding
+        // ref: https://github.com/facebookresearch/segment-anything/blob/main/segment_anything/modeling/prompt_encoder.py#L81-L85
+        data[2] = 2.0f*(0.0f) - 1.0f;
+        data[3] = 2.0f*(0.0f) - 1.0f;
+    }
+
+    // from sam_fill_dense_pe
+    {
+        struct ggml_tensor * xy_embed_stacked = ggml_graph_get_tensor(gf, "xy_embed_stacked");
+        const int32_t n_img_embd = model.hparams.n_img_embd();
+        const float n_img_embd_inv = 1.0f / n_img_embd;
+        float * data = (float *) ggml_get_data(xy_embed_stacked);
+        for (int i = 0; i < n_img_embd; ++i) {
+            const int row = 2*i*n_img_embd;
+            const float y_val = 2 * (i + 0.5f) * n_img_embd_inv - 1;
+            for (int j = 0; j < n_img_embd; ++j) {
+                const float x_val = 2 * (j + 0.5f) * n_img_embd_inv - 1;
+                data[row + 2*j + 0] = x_val;
+                data[row + 2*j + 1] = y_val;
+            }
+        }
+    }
 
     return gf;
 }
@@ -2062,15 +2073,12 @@ bitmap_masks* sam_mask_segment(const SBitmap* img_in, const std::string& img_pat
     params.pt.x = x;
     params.pt.y = y;
     params.seed = rng_seed;
-    if (nthreads > 0) {
-    	params.n_threads = std::min(nthreads, (int) std::thread::hardware_concurrency());
-    }
-    bitmap_masks* ret = nullptr;
 
     static sam_model model;
     static bool sam_model_loaded = false;
     sam_state state;
     int64_t t_load_us = 0;
+    bitmap_masks* ret = nullptr;
 
     if (params.seed < 0) {
         params.seed = time(NULL);
@@ -2103,7 +2111,7 @@ bitmap_masks* sam_mask_segment(const SBitmap* img_in, const std::string& img_pat
     {
         const int64_t t_start_us = ggml_time_us();
 
-        if (!sam_model_loaded && !sam_model_load(params, model)) {
+        if (!sam_model_load(params, model)) {
             SAM_FPRINTF(stderr, "%s: failed to load model from '%s'\n", __func__, params.model.c_str());
             goto LErr2;
         }
@@ -2133,85 +2141,48 @@ bitmap_masks* sam_mask_segment(const SBitmap* img_in, const std::string& img_pat
     }
 
 
-    static const size_t tensor_alignment = 32;
     {
         state.buf_compute_img_enc.resize(ggml_tensor_overhead()*GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead());
-        state.allocr = ggml_allocr_new_measure(tensor_alignment);
-        struct ggml_cgraph * gf_measure = sam_encode_image(model, state, img1);
-        if (!gf_measure) {
-            SAM_FPRINTF(stderr, "%s: failed to encode image\n", __func__);
-            goto LErr3;
-        }
-
-        size_t alloc_size = ggml_allocr_alloc_graph(state.allocr, gf_measure) + tensor_alignment;
-        ggml_allocr_free(state.allocr);
-
-        // recreate allocator with exact memory requirements
-        state.buf_alloc_img_enc.resize(alloc_size);
-        state.allocr = ggml_allocr_new(state.buf_alloc_img_enc.data(), state.buf_alloc_img_enc.size(), tensor_alignment);
-
-        // compute the graph with the measured exact memory requirements from above
-        ggml_allocr_reset(state.allocr);
+        state.allocr = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
 
         struct ggml_cgraph  * gf = sam_encode_image(model, state, img1);
         if (!gf) {
             SAM_FPRINTF(stderr, "%s: failed to encode image\n", __func__);
-            goto LErr3;
+            goto LErr2;
         }
-
-        ggml_allocr_alloc_graph(state.allocr, gf);
 
         ggml_graph_compute_helper(state.work_buffer, gf, params.n_threads);
 
         print_t_f32("embd_img", state.embd_img);
 
-        ggml_allocr_free(state.allocr);
+        ggml_gallocr_free(state.allocr);
         state.allocr = NULL;
         state.work_buffer.clear();
     }
     {
         state.buf_compute_fast.resize(ggml_tensor_overhead()*GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead());
-        state.allocr = ggml_allocr_new_measure(tensor_alignment);
+        state.allocr = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
 
         // TODO: more varied prompts
         SAM_FPRINTF(stderr, "prompt: (%f, %f)\n", params.pt.x, params.pt.y);
 
-        // measure memory requirements for the graph
-        struct ggml_cgraph  * gf_measure = sam_build_fast_graph(model, state, img0.nx, img0.ny, params.pt);
-        if (!gf_measure) {
-            SAM_FPRINTF(stderr, "%s: failed to build fast graph to measure\n", __func__);
-            goto LErr3;
-        }
-
-        size_t alloc_size = ggml_allocr_alloc_graph(state.allocr, gf_measure) + tensor_alignment;
-        ggml_allocr_free(state.allocr);
-
-        // recreate allocator with exact memory requirements
-        state.buf_alloc_fast.resize(alloc_size);
-        state.allocr = ggml_allocr_new(state.buf_alloc_fast.data(), state.buf_alloc_fast.size(), tensor_alignment);
-
-        // compute the graph with the measured exact memory requirements from above
-        ggml_allocr_reset(state.allocr);
-
         struct ggml_cgraph  * gf = sam_build_fast_graph(model, state, img0.nx, img0.ny, params.pt);
         if (!gf) {
             SAM_FPRINTF(stderr, "%s: failed to build fast graph\n", __func__);
-            goto LErr3;
+            goto LErr2;
         }
-
-        ggml_allocr_alloc_graph(state.allocr, gf);
 
         ggml_graph_compute_helper(state.work_buffer, gf, params.n_threads);
 
         //print_t_f32("iou_predictions", state.iou_predictions);
         //print_t_f32("low_res_masks", state.low_res_masks);
-        ggml_allocr_free(state.allocr);
+        ggml_gallocr_free(state.allocr);
         state.allocr = NULL;
     }
 
     if (!sam_write_masks(model.hparams, img0.nx, img0.ny, state, ret)) {
         SAM_FPRINTF(stderr, "%s: failed to write masks\n", __func__);
-        goto LErr3;
+        goto LErr2;
     }
 
     // report timing
@@ -2223,13 +2194,9 @@ bitmap_masks* sam_mask_segment(const SBitmap* img_in, const std::string& img_pat
         SAM_FPRINTF(stderr, "%s:    total time = %8.2f ms\n", __func__, (t_main_end_us - t_main_start_us)/1000.0f);
     }
 
-    //ggml_free(model.ctx);
-
     return ret;
 
     /* error handling cleanup */
-LErr3:
-    //ggml_free(model.ctx);
 LErr2:
     delete ret;
     return nullptr;

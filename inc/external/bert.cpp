@@ -270,6 +270,9 @@ void bert_tokenize(
 
 struct bert_ctx * bert_load_from_file(const char *fname)
 {
+	TBI();
+	return nullptr;
+#if 0
     printf("%s: loading model from '%s' - please wait ...\n", __func__, fname);
 
     auto fin = std::ifstream(fname, std::ios::binary);
@@ -631,9 +634,12 @@ struct bert_ctx * bert_load_from_file(const char *fname)
     printf("%s: mem_per_token %zu KB, mem_per_input %ld MB\n", __func__, new_bert->mem_per_token / (1 << 10), new_bert->mem_per_input / (1 << 20));
 
     return new_bert;
+#endif    
 }
 
-void bert_resize_ctx(bert_ctx * ctx, int32_t new_size) {    
+void bert_resize_ctx(bert_ctx * ctx, int32_t new_size) {
+	TBI();
+#if 0
     int64_t buf_size_new = ctx->mem_per_input * new_size;
 
     // TODO: Max memory should be a param? Now just 1 GB
@@ -650,6 +656,7 @@ void bert_resize_ctx(bert_ctx * ctx, int32_t new_size) {
         ctx->buf_compute.resize(buf_size_new);
         ctx->max_batch_n = new_size;
     }
+#endif
 }
 
 void bert_free(bert_ctx * ctx) {
@@ -675,6 +682,8 @@ void bert_eval_batch(
     int32_t * n_tokens,
     float ** batch_embeddings)
 {
+	TBI();
+#if 0
     const bert_model& model = ctx->model;
     bool mem_req_mode = !batch_embeddings;
     // batch_embeddings is nullptr for the initial memory requirements run
@@ -878,6 +887,7 @@ void bert_eval_batch(
 
         ggml_free(ctx0);
     }
+#endif    
 }
 
 void bert_encode(
@@ -897,6 +907,8 @@ void bert_encode_batch(
     const char ** texts,
     float **embeddings)
 {
+	TBI();
+#if 0
     // TODO: Disable batching for now
     n_batch_size = 1;
     /*
@@ -959,4 +971,5 @@ void bert_encode_batch(
             bert_eval_batch(ctx, n_threads, n_batch_size, &sorted_tokens[i], &sorted_n_tokens[i], &sorted_embeddings[i]);
         }
     }
+#endif    
 }

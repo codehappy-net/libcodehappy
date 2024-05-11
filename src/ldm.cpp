@@ -25,7 +25,8 @@ const std::string sd_sampler_names[sd_sampler_count] = {
 const std::string sd_schedule_names[sd_scheduler_count] = {
     "default",
     "discrete",
-    "Karras"
+    "Karras",
+    "AlignYourSteps",
 };
 
 #define PUZZLEBOX_URI	"https://www.codehappy.net/puzzlebox/"
@@ -48,6 +49,8 @@ static void validate_wh(u32& w, u32& h) {
 	ship_assert((w != 0) && (h != 0));
 }
 
+static std::mutex __ldm_mtx;
+
 SDServer::SDServer() {
 	sd_model = nullptr;
 	nthreads = std::max((int) std::thread::hardware_concurrency() / 2, 1);
@@ -60,14 +63,14 @@ SDServer::SDServer() {
 
 SDServer::~SDServer() {
 	if (sd_model != nullptr) {
-		delete sd_model;
+		free_sd_ctx(sd_model);
 		sd_model = nullptr;
 	}
 }
 
 SBitmap** SDServer::txt2img(const std::string& prompt, const std::string& neg_prompt, u32 w, u32 h, double cfg_scale,
                             i64 rng_seed, double variation_weight, i64* seed_return, int batch_count) {
-	std::vector<uint8_t*> output;
+	sd_image_t* output;
 	SBitmap** ret = nullptr;
 	i64 seed;
 
@@ -84,8 +87,28 @@ SBitmap** SDServer::txt2img(const std::string& prompt, const std::string& neg_pr
 	}
 
 	if (variation_weight == 0.0) {
-		output = sd_model->txt2img(prompt, neg_prompt, cfg_scale, w, h, (SampleMethod) sampler, steps, seed, batch_count);
-		ret = bmps_from_vecu8(output, w, h);
+		output = ::txt2img(sd_model, 
+			(prompt.empty() ? nullptr : prompt.c_str()),
+			(neg_prompt.empty() ? nullptr : neg_prompt.c_str()),
+			0, /* clip skip */
+			cfg_scale,
+			w,
+			h,
+			(sample_method_t) sampler,
+			steps,
+			seed,
+			batch_count,
+			nullptr, /* control_cond */
+			0., /* control_strength */
+			0., /* style strength */
+			false, /* normalize_input */
+			nullptr /* input_id_images_path */ );
+
+		ret = new SBitmap * [batch_count];
+		for (int e = 0; e < batch_count; ++e) {
+			ret[e] = sdimg_to_bmp(output, e);
+		}
+		free_sdimg(output, batch_count);
 		if (!is_null(ret)) {
 			last_seed = seed;
 			if (!is_null(seed_return)) {
@@ -126,8 +149,8 @@ void SDServer::txt2img_slerp(std::vector<SBitmap*>& imgs_out, int n_images, cons
 }
 
 SBitmap** SDServer::img2img(SBitmap* init_img, double img_strength, const std::string& prompt, const std::string& neg_prompt,
-                            double cfg_scale, i64 rng_seed, double variation_weight, i64* seed_return) {
-	std::vector<uint8_t*> output, init_img_v;
+                            double cfg_scale, i64 rng_seed, double variation_weight, i64* seed_return, int batch_count) {
+	sd_image_t* output, * in_img;
 	SBitmap** ret = nullptr;
 	i64 seed;
 	u32 w, h;
@@ -150,10 +173,35 @@ SBitmap** SDServer::img2img(SBitmap* init_img, double img_strength, const std::s
 			seed = -seed;
 	}
 
-	vecu8_from_bmp(init_img_v, &init_img, 1);
+	in_img = bmp_to_sdimg(init_img);
 
-	output = sd_model->img2img(init_img_v[0], prompt, neg_prompt, cfg_scale, w, h, (SampleMethod) sampler, steps, img_strength, seed);
-	ret = bmps_from_vecu8(output, w, h);
+	output = ::img2img(sd_model,
+			*in_img,
+			(prompt.empty() ? nullptr : prompt.c_str()),
+			(neg_prompt.empty() ? nullptr : neg_prompt.c_str()),
+			0, /* clip skip */
+			cfg_scale,
+			w,
+			h,
+			(sample_method_t) sampler,
+			steps,
+			(float) img_strength,
+			seed,
+			batch_count,
+			nullptr, /* control_cond */
+			0., /* control_strength */
+			0., /* style strength */
+			false, /* normalize_input */
+			nullptr /* input_id_images_path */ );
+
+	ret = new SBitmap * [batch_count];
+	for (int e = 0; e < batch_count; ++e) {
+		ret[e] = sdimg_to_bmp(output, e);
+	}
+
+	free_sdimg(output, batch_count);
+	free_sdimg(in_img, 1);
+
 	if (!is_null(ret)) {
 		last_seed = seed;
 		if (!is_null(seed_return)) {
@@ -207,13 +255,39 @@ static ggml_type wtype_from_path(const std::string& path, ggml_type wtype) {
 	return ret;
 }
 
-bool SDServer::load_from_file(const std::string& path, ggml_type wtype) {
-	if (sd_model != nullptr) {
-		delete sd_model;
+sd_type_t sdtype_from_wtype(ggml_type wtype) {
+	switch (wtype) {
+	case GGML_TYPE_F32:
+		return SD_TYPE_F32;
+	case GGML_TYPE_F16:
+		return SD_TYPE_F16;
+	case GGML_TYPE_Q8_0:
+		return SD_TYPE_Q8_0;
+	case GGML_TYPE_Q5_1:
+		return SD_TYPE_Q5_1;
+	case GGML_TYPE_Q5_0:
+		return SD_TYPE_Q5_0;
+	case GGML_TYPE_Q4_1:
+		return SD_TYPE_Q4_1;
+	case GGML_TYPE_Q4_0:
+		return SD_TYPE_Q4_0;
 	}
+
+	return SD_TYPE_F16;
+}
+
+bool SDServer::load_from_file(const std::string& path, ggml_type wtype) {
+	ScopeMutex sm(__ldm_mtx);
+	if (sd_model != nullptr) {
+		free_sd_ctx(sd_model);
+	}
+	sd_type_t mtype = sdtype_from_wtype(wtype_from_path(path, wtype));
 	model_path = path;
-	sd_model = new StableDiffusion((int) nthreads);
-	return sd_model->load_from_file(path, "", wtype_from_path(path, wtype), (Schedule) scheduler);
+	sd_model = new_sd_ctx(path.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, false, false, false,
+				(int) nthreads, mtype, STD_DEFAULT_RNG,
+				(schedule_t) scheduler, false, false, false);
+
+	return (sd_model != nullptr);
 }
 
 bool SDServer::load_default_model(int sd_version, bool download_if_missing) {
@@ -397,6 +471,86 @@ void stretch_for_img2img_replace(SBitmap* bmp) {
 
 bool legal_img2img(SBitmap* bmp) {
 	return ((bmp->width() & 63) == 0) && ((bmp->height() & 63) == 0);
+}
+
+
+static void fill_sdimg_data(sd_image_t* sd_img, SBitmap* bmp) {
+	// we use malloc() here because the SD library generated sdimgs do, too.
+	uint8_t* w;
+	sd_img->data = (uint8_t *) malloc(sd_img->width * sd_img->height * sd_img->channel);
+	w = sd_img->data;
+	for (int y = 0; y < bmp->height(); ++y) {
+		for (int x = 0; x < bmp->width(); ++x) {
+			RGBColor c = bmp->get_pixel(x, y);
+			*w = (uint8_t) RGB_RED(c);
+			++w;
+			*w = (uint8_t) RGB_GREEN(c);
+			++w;
+			*w = (uint8_t) RGB_BLUE(c);
+			++w;
+		}
+	}
+}
+
+sd_image_t* bmp_to_sdimg(SBitmap* bmp) {
+	NOT_NULL_OR_RETURN(bmp, nullptr);
+	sd_image_t* ret = (sd_image_t*) calloc(1, sizeof(sd_image_t));
+
+	ret->width = bmp->width();
+	ret->height = bmp->height();
+	// this'll work for any input SBitmap format
+	ret->channel = 3;
+	fill_sdimg_data(ret, bmp);
+
+	return ret;
+}
+
+sd_image_t* bmp_array_to_sdimg(SBitmap** bmp, int n_imgs) {
+	NOT_NULL_OR_RETURN(bmp, nullptr);
+	sd_image_t* ret = (sd_image_t*) calloc(n_imgs, sizeof(sd_image_t));
+	for (int e = 0; e < n_imgs; ++e) {
+		ret[e].width = bmp[e]->width();
+		ret[e].height = bmp[e]->height();
+		ret[e].channel = 3;
+		fill_sdimg_data(&ret[e], bmp[e]);
+	}
+	return ret;
+}
+
+SBitmap* sdimg_to_bmp(sd_image_t* sd_img, int img_idx) {
+	NOT_NULL_OR_RETURN(sd_img, nullptr);
+	SBitmap* ret = new SBitmap(sd_img[img_idx].width, sd_img[img_idx].height);
+	uint8_t* w = sd_img[img_idx].data;
+	bool has_alpha = (sd_img[img_idx].channel > 3);
+
+	ship_assert(sd_img[img_idx].channel == 3 || sd_img[img_idx].channel == 4);
+
+	for (int y = 0; y < sd_img[img_idx].height; ++y) {
+		for (int x = 0; x < sd_img[img_idx].width; ++x) {
+			int r, g, b;
+			r = (int) (*w);
+			++w;
+			g = (int) (*w);
+			++w;
+			b = (int) (*w);
+			++w;
+			if (has_alpha)
+				++w;
+			ret->put_pixel(x, y, RGB_NO_CHECK(r, g, b));
+		}
+	}
+
+	return ret;
+}
+
+void free_sdimg(sd_image_t* sd_img_free, int n_imgs) {
+	NOT_NULL_OR_RETURN_VOID(sd_img_free);
+	/* this data is malloc'ed in sd_tensor_to_image() */
+	for (int e = 0; e < n_imgs; ++e) {
+		if (!is_null(sd_img_free[e].data))
+			free(sd_img_free[e].data);
+	}
+	free(sd_img_free);
 }
 
 /*** end ldm.cpp ***/

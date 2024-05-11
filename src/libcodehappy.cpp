@@ -1065,6 +1065,7 @@ bool is_codehappy_verbose() {
 #include "external/stable-diffusion/util.cpp"
 #include "external/stable-diffusion/model.cpp"
 #include "external/stable-diffusion/zip.c"
+#include "external/stable-diffusion/upscaler.cpp"
 #include "ldm.cpp"
 #include "external/bert.cpp"
 #include "bert.cpp"

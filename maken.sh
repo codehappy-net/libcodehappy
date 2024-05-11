@@ -6,7 +6,7 @@ rm bin/libcodehappy.a
 echo "*** Build external C libraries (sqlite, pdcurses on Windows, ggml on CPU)"
 gcc -O3 -flto -fuse-linker-plugin -m64 -c -Iinc inc/external/sqlite3.c -o sqlite3.o
 
-GGML_GPP_ARGS="-fPIC -DNDEBUG -D_XOPEN_SOURCE=600 -D_GNU_SOURCE -D_FORTIFY_SOURCE=2 -Wall -Wextra -Wpedantic -Wcast-qual -Wno-unused-function -Wno-multichar -pthread -march=native -mtune=native -DGGML_USE_K_QUANTS -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable"
+GGML_GPP_ARGS="-fPIC -DNDEBUG -D_XOPEN_SOURCE=600 -D_GNU_SOURCE -D_FORTIFY_SOURCE=2 -Wall -Wextra -Wpedantic -Wcast-qual -Wno-unused-function -Wno-multichar -Wno-cast-qual -pthread -march=native -mtune=native -DGGML_USE_K_QUANTS -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable"
 GGML_GCC_ARGS="-fPIC -DNDEBUG -Wall -Wextra -Wpedantic -Wcast-qual -Wdouble-promotion -Wshadow -Wstrict-prototypes -Wpointer-arith -Wmissing-prototypes -pthread -march=native -mtune=native -DGGML_USE_K_QUANTS -D_XOPEN_SOURCE=600 -D_GNU_SOURCE -D_FORTIFY_SOURCE=2 -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable"
 
 gcc -I. -O3 -std=c11 $GGML_GCC_ARGS -c inc/external/ggml/ggml.c -o ggml.o
@@ -22,6 +22,11 @@ g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/sampling.cpp -o sampl
 g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/train.cpp -o train.o
 g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/llava.cpp -o llava.o
 g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/clip.cpp -o clip.o
+g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/json-schema-to-grammar.cpp -o json-schema-to-grammar.o
+g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/ngram-cache.cpp -o ngram-cache.o
+g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/sgemm.cpp -o sgemm.o
+g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/unicode.cpp -o unicode.o
+g++ -I. -O3 -std=c++11 $GGML_GPP_ARGS -c inc/external/ggml/unicode-data.cpp -o unicode-data.o
 
 echo "*** Build embedded fonts/patches."
 embed_built=0
@@ -66,6 +71,7 @@ g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/bertembed.cpp -o bertem
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/bert2stream.cpp -o bert2stream.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/chat.cpp -o chat.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/sam-img.cpp -o sam-img.o
+g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/llava.cpp -o llava.o
 g++ -O3 -flto -fuse-linker-plugin -m64 compress.o bin/libcodehappy.a -lpthread -o compress
 g++ -O3 -flto -fuse-linker-plugin -m64 testfont.o bin/libcodehappy.a -lpthread -o testfont
 g++ -O3 -flto -fuse-linker-plugin -m64 colors.o bin/libcodehappy.a -lpthread -o colors
@@ -91,6 +97,7 @@ g++ -O3 -flto -fuse-linker-plugin -m64 bertembed.o bin/libcodehappy.a -lpthread 
 g++ -O3 -flto -fuse-linker-plugin -m64 bert2stream.o bin/libcodehappy.a -lpthread -o bert2stream
 g++ -O3 -flto -fuse-linker-plugin -m64 chat.o bin/libcodehappy.a -lpthread -o chat-cpu
 g++ -O3 -flto -fuse-linker-plugin -m64 sam-img.o bin/libcodehappy.a -lpthread -o sam-img
+g++ -O3 -flto -fuse-linker-plugin -m64 llava.o bin/libcodehappy.a -lpthread -o llava-cpu
 if [ $embed_built -eq 1 ]; then
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc -DCODEHAPPY_NATIVE examples/fontsample.cpp -o fontsample.o
 g++ -O3 -flto -fuse-linker-plugin -m64 fontsample.o bin/libcodehappy.a -lpthread -o fontsample

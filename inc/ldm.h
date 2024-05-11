@@ -7,7 +7,7 @@
 	of interpolation, variations, progressive sampling animations, or classifier
 	free guidance strength animations.
 
-	Copyright 2023, C. M. Street
+	Copyright (c) 2023-2024, C. M. Street
 
 ***/
 #ifndef __LDM_H__
@@ -19,8 +19,8 @@ enum SDSamplerType {
 };
 
 enum SDSchedulerType {
-	sd_default = 0, sd_discrete, sd_karras,
-	sd_max_scheduler_valid = sd_karras
+	sd_default = 0, sd_discrete, sd_karras, sd_ays,
+	sd_max_scheduler_valid = sd_ays
 };
 
 /* Default negative prompt: by default, it's empty, but you can set it to something else if you like, and it allows us
@@ -90,7 +90,8 @@ public:
 	                 double cfg_scale = 7.0,
 	                 i64 rng_seed = -1ll,
 	                 double variation_weight = 0.0,
-	                 i64* seed_return = nullptr);
+	                 i64* seed_return = nullptr,
+	                 int batch_count = 1);
 
 
 	/* load a Stable Diffusion model (1.x, 2.x, XL) from the specified path using the specified quantization. Returns true on success. */
@@ -129,7 +130,7 @@ private:
 	/* ggml format model (you can use the Python script by leejet in /inc/external/stable-diffusion/models to convert
 	   your own checkpoints, if you like) */
 	// Note that as of 12/2023 the stable-diffusion library supports .ckpt and .safetensors checkpoints!
-	StableDiffusion* sd_model;
+	sd_ctx_t* sd_model;
 
 	std::string model_path;
 	u32 nthreads;	
@@ -159,6 +160,11 @@ extern void vecu8_from_bmp(std::vector<uint8_t*>& outvec, SBitmap** bmp, int n_i
 extern SBitmap* single_bmp_from_u8array(uint8_t* data, u32 w, u32 h);
 extern uint8_t* u8array_from_bmp(SBitmap* bmp);
 
+/* convert an SBitmap (or an array of SBitmaps) into an sd_image_t, and vice versa */
+extern sd_image_t* bmp_to_sdimg(SBitmap* bmp);
+extern sd_image_t* bmp_array_to_sdimg(SBitmap** bmp, int n_imgs);
+extern SBitmap* sdimg_to_bmp(sd_image_t* sd_img, int img_idx);
+extern void free_sdimg(sd_image_t* sd_img_free, int n_imgs);
 
 /* Stretches an image for img2img: the first returns a new bitmap with the stretched content, while the second
    replaces the original bitmap with its stretched version.

@@ -674,7 +674,7 @@ InstructionType Llama::isn_rubric_from_model_name(const char * s) const {
 void Llama::ensure_model_loaded() {
 	if (nullptr == model || nullptr == ctx) {
 		if (!ggml_backend_is_init()) {
-			llama_backend_init(params.numa);
+			llama_backend_init(); //params.numa);
 			__ggml_be_init = true;
 		}
 		std::tie(model, ctx) = llama_init_from_gpt_params(params);
@@ -929,10 +929,10 @@ void Llama::generate_tokens(std::vector<llama_token>& toks_out, bool echo, Llama
 		if (embd_inp.size() > 0) {
 			// if the context has filled, let's move things up (keeping the original instruction, if present.) 
 			if (npast + (int) embd_inp.size() + std::max<int>(0, guidance_offset) > nctx) {
-				const int n_left = npast - keep_tok - 1;
+				const int n_left = npast - keep_tok; // - 1;
 				const int n_discard = n_left / 2;
-				llama_kv_cache_seq_rm(ctx, 0, keep_tok + 1, keep_tok + n_discard + 1);
-				llama_kv_cache_seq_shift(ctx, 0, keep_tok + 1 + n_discard, npast, -n_discard);
+				llama_kv_cache_seq_rm(ctx, 0, keep_tok, keep_tok + n_discard);
+				llama_kv_cache_seq_add(ctx, 0, keep_tok + n_discard, npast, -n_discard);
 				npast -= n_discard;
 				if (ctx_cfg != nullptr)
 					npast_guidance -= n_discard;

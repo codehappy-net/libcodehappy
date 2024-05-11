@@ -30,6 +30,10 @@
 #endif
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if !defined(_POSIX_C_SOURCE) && defined(_MSC_VER)
 // 64-bit Windows is the only mainstream platform
 // where sizeof(long) != sizeof(void*)
@@ -498,5 +502,8 @@ extern ZIP_EXPORT int zip_extract(const char *zipname, const char *dir,
                                                           void *arg),
                                   void *arg);
 /** @} */
+#ifdef __cplusplus
+}
+#endif
 
 #endif

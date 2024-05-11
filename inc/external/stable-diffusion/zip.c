@@ -36,7 +36,6 @@
 #include <unistd.h>
 #endif
 
-// CMS: already have miniz included
 //#include "miniz.h"
 #include "zip.h"
 
