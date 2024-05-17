@@ -399,6 +399,14 @@ std::string Llama::isn_rubric_opening() const {
 		ret += "\nUSER: ";
 		return ret;
 
+	case ISN_VICUNA_SYSTEM:
+		if (sys_prompt.empty()) {
+			return "USER: ";
+		}
+		ret = sys_prompt;
+		ret += "\nUSER: ";
+		return ret;
+
 	case ISN_TULU:
 		return "<|user|>\n";
 
@@ -455,6 +463,24 @@ std::string Llama::isn_rubric_opening() const {
 
 	case ISN_PHI2:
 		return "Instruct: ";
+
+	case ISN_COMMANDR:
+		if (!sys_prompt.empty()) {
+			ret = "<BOS_TOKEN><|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>";
+			ret += sys_prompt;
+			ret += "<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|USER_TOKEN|>";
+			return ret;
+		}
+		return "<BOS_TOKEN><|START_OF_TURN_TOKEN|><|USER_TOKEN|>";
+
+	case ISN_LLAMA3CHAT:
+		if (!sys_prompt.empty()) {
+			ret = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n";
+			ret += sys_prompt;
+			ret += "<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n";
+			return ret;
+		}
+		return "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n";
 	}
 	return "### Instruction: ";
 }
@@ -483,6 +509,7 @@ std::string Llama::isn_rubric_closing(bool trail_space) const {
 		return "<|im_end|>\n<|im_start|>assistant\n";
 	case ISN_VICUNA:
 	case ISN_ORCA:
+	case ISN_VICUNA_SYSTEM:
 		if (trail_space)
 			return "\nASSISTANT: ";
 		return "\nASSISTANT:";
@@ -508,6 +535,10 @@ std::string Llama::isn_rubric_closing(bool trail_space) const {
 		return "\n<AI>:";
 	case ISN_PHI2:
 		return "\nOutput:";
+	case ISN_COMMANDR:
+		return "<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>";
+	case ISN_LLAMA3CHAT:
+		return "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n";
 	}
 	return "\n\n### Response:";
 }
@@ -533,6 +564,8 @@ bool Llama::uses_system_prompt() const {
 	case ISN_PHIND:
 	case ISN_ORCA_HASHES:
 	case ISN_XWINCODER:
+	case ISN_COMMANDR:
+	case ISN_LLAMA3CHAT:
 		return true;
 
 	case ISN_CUSTOM:
@@ -563,6 +596,8 @@ std::string Llama::isn_system_prompt() const {
 	case ISN_VICUNA:
 	case ISN_ZEPHYR:
 	case ISN_ORCA_HASHES:
+	case ISN_COMMANDR:
+	case ISN_LLAMA3CHAT:
 	case ISN_CUSTOM:
 		// These *can* use a system message, but none is supplied by default.
 		return "";
@@ -590,6 +625,10 @@ std::string Llama::isn_system_prompt() const {
 	case ISN_XWINCODER:
 		// default for XwinCoder
 		return "You are an AI coding assistant that helps people with programming. Write a response that appropriately completes the user's request.";
+
+	case ISN_VICUNA_SYSTEM:
+		// default for WizardLM
+		return "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.";
 	}
 
 	// This is the Alpaca default system prompt, it's also a fairly safe default since lots of people train on Alpaca examples.
@@ -599,7 +638,7 @@ std::string Llama::isn_system_prompt() const {
 static std::string __rubric_names[] = {
 	"alpaca", "alpaca-system", "mistral", "pygmalion", "codellama", "chatml", "vicuna", "monadgpt",
 	"tulu", "orca", "llama2chat", "human-assistant", "user-assistant", "deepseek-coder", "guanaco",
-	"zephyr", "phind", "orca-hashes", "xwincoder", "phi2",
+	"zephyr", "phind", "orca-hashes", "xwincoder", "phi2", "command-r", "llama3chat", "vicuna-system",
 };
 
 std::string Llama::isn_rubric_name(InstructionType it) {
@@ -645,11 +684,12 @@ InstructionType Llama::isn_rubric_from_model_name(const char * s) const {
 		{ "mythomax", ISN_ALPACA_SYS }, { "synatra", ISN_CHATML }, { "causallm", ISN_CHATML },
 		{ "chupacabra", ISN_ORCA_HASHES }, { "valiant", ISN_LLAMA2CHAT }, { "falcon", ISN_USER_ASSISTANT },
 		{ "spicyboros", ISN_VICUNA }, { "synthia", ISN_ORCA }, { "xwincoder", ISN_XWINCODER },
-		{ "wizardmath", ISN_ALPACA_SYS }, { "wizardlm", ISN_VICUNA }, { "mythalion", ISN_ALPACA_SYS },
+		{ "wizardmath", ISN_ALPACA_SYS }, { "wizardlm", ISN_VICUNA_SYSTEM }, { "mythalion", ISN_ALPACA_SYS },
 		{ "platypus", ISN_ALPACA_SYS }, { "beluga", ISN_ORCA_HASHES }, { "euryale", ISN_ALPACA_SYS },
 		{ "amethyst", ISN_ALPACA_SYS }, { "agentlm", ISN_LLAMA2CHAT }, { "lemur", ISN_CHATML },
 		{ "capybara-tess", ISN_ORCA }, { "mixtral", ISN_MISTRAL }, { "phi-2", ISN_PHI2 },
-		{ "miqu", ISN_MISTRAL }, { "senku", ISN_MISTRAL },
+		{ "miqu", ISN_MISTRAL }, { "senku", ISN_MISTRAL }, { "c4ai", ISN_COMMANDR }, { "fimbul", ISN_ALPACA },
+		{ "command-r", ISN_COMMANDR }, { "llama3", ISN_LLAMA3CHAT }, { "qwen", ISN_CHATML },
 	};
 	// Goliath does fine taking either ISN_ALPACA or ISN_VICUNA, does one perform better?
 

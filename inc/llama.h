@@ -46,6 +46,9 @@ enum InstructionType {
 	ISN_ORCA_HASHES,	// ### System: ### User: ### Assistant: (fbpfbpfbpfbpfft)
 	ISN_XWINCODER,		// <system>: <user>: and <AI>:
 	ISN_PHI2,		// Instruct: and Output:
+	ISN_COMMANDR,		// Command-R: <|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|> etc.
+	ISN_LLAMA3CHAT,	// Llama 3: <|start_header_id|> etc.
+	ISN_VICUNA_SYSTEM,	// Vicuna-style USER:/ASSISTANT: with the system prompt at the top.
 
 	/* these should always be last */
 	ISN_MAX,
