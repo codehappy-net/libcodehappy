@@ -71,6 +71,12 @@ int app_main() {
 	std::cout << "Classifier-free guidance scale: " << cfg << "\n";
 	std::cout << "Number of CPU threads: " << sd_server.get_nthreads() << "\n";
 	std::cout << "Denoising steps: " << sd_server.get_steps() << "\n";
+	if (sampler >= 0) {
+		std::cout << "Sampler: " << sampler << "\n";
+	}
+	if (scheduler >= 0) {
+		std::cout << "Scheduler: " << scheduler << "\n";
+	}
 
 	SBitmap** out = sd_server.txt2img(prompt, neg_prompt, w, h, cfg);
 

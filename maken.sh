@@ -72,6 +72,7 @@ g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/bert2stream.cpp -o bert
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/chat.cpp -o chat.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/sam-img.cpp -o sam-img.o
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/llava.cpp -o llava.o
+g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc examples/exifdemo.cpp -o exifdemo.o
 g++ -O3 -flto -fuse-linker-plugin -m64 compress.o bin/libcodehappy.a -lpthread -o compress
 g++ -O3 -flto -fuse-linker-plugin -m64 testfont.o bin/libcodehappy.a -lpthread -o testfont
 g++ -O3 -flto -fuse-linker-plugin -m64 colors.o bin/libcodehappy.a -lpthread -o colors
@@ -98,6 +99,7 @@ g++ -O3 -flto -fuse-linker-plugin -m64 bert2stream.o bin/libcodehappy.a -lpthrea
 g++ -O3 -flto -fuse-linker-plugin -m64 chat.o bin/libcodehappy.a -lpthread -o chat-cpu
 g++ -O3 -flto -fuse-linker-plugin -m64 sam-img.o bin/libcodehappy.a -lpthread -o sam-img
 g++ -O3 -flto -fuse-linker-plugin -m64 llava.o bin/libcodehappy.a -lpthread -o llava-cpu
+g++ -O3 -flto -fuse-linker-plugin -m64 exifdemo.o bin/libcodehappy.a -lpthread -o exifdemo
 if [ $embed_built -eq 1 ]; then
 g++ -O3 -flto -fuse-linker-plugin -m64 -c -Iinc -DCODEHAPPY_NATIVE examples/fontsample.cpp -o fontsample.o
 g++ -O3 -flto -fuse-linker-plugin -m64 fontsample.o bin/libcodehappy.a -lpthread -o fontsample

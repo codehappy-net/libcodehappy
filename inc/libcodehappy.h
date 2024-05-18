@@ -467,6 +467,9 @@ private:
 /*** the Segment Anything model (SAM) ***/
 #include "sam.h"
 
+/*** reading EXIF data from image files. ***/
+#include "exif.h"
+
 /*** Application's main declaration. ***/
 #if defined(CODEHAPPY_NATIVE) && defined(CODEHAPPY_SDL) && defined(CODEHAPPY_WINDOWS)
 #define app_main()	WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevIns, LPSTR lpszArgument, int iShow)
