@@ -287,6 +287,26 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 		break;
 	}
 
+	// attempt to guess the instruction rubric (if any) used by the model from the name.
+	InstructionType it = isn_rubric_from_model_name(model_path);
+	if (it != ISN_INVALID)
+		isn_type = it;
+
+	if (it == ISN_COMMANDR) {
+		if (flength_64(model_path) > 40000000000ULL) {
+			// Command-R Plus (104B)
+			layers4 = 10;
+		} else {
+			// Command-R (35B)
+			layers4 = 60;
+		}
+	}
+
+	// WizardLM 8x22B
+	if (__stristr(model_path, "wizardlm") != nullptr && __stristr(model_path, "8x22") != nullptr) {
+		layers4 = 10;
+	}
+
 	params.n_gpu_layers = (layers4 * 4) / quant;
 
 	if (vram_gb >= 0 && vram_gb != 24) {
@@ -294,10 +314,9 @@ void Llama::do_init(const char* model_path, int vram_gb, bool og_llama, bool is_
 		params.n_gpu_layers /= 24;
 	}
 
-	// attempt to guess the instruction rubric (if any) used by the model from the name.
-	InstructionType it = isn_rubric_from_model_name(model_path);
-	if (it != ISN_INVALID)
-		isn_type = it;
+	// Command-R models have 128K context
+	if (it == ISN_COMMANDR)
+		params.n_ctx = 131072;
 
 	// sometimes context size is included in the file name as well
 	if (__stristr(model_path, "-200k") != nullptr)
@@ -566,6 +585,7 @@ bool Llama::uses_system_prompt() const {
 	case ISN_XWINCODER:
 	case ISN_COMMANDR:
 	case ISN_LLAMA3CHAT:
+	case ISN_VICUNA_SYSTEM:
 		return true;
 
 	case ISN_CUSTOM:
@@ -690,6 +710,7 @@ InstructionType Llama::isn_rubric_from_model_name(const char * s) const {
 		{ "capybara-tess", ISN_ORCA }, { "mixtral", ISN_MISTRAL }, { "phi-2", ISN_PHI2 },
 		{ "miqu", ISN_MISTRAL }, { "senku", ISN_MISTRAL }, { "c4ai", ISN_COMMANDR }, { "fimbul", ISN_ALPACA },
 		{ "command-r", ISN_COMMANDR }, { "llama3", ISN_LLAMA3CHAT }, { "qwen", ISN_CHATML },
+		{ "llama-3", ISN_LLAMA3CHAT }, { "l3", ISN_LLAMA3CHAT }, { "llama2", ISN_LLAMA2CHAT },
 	};
 	// Goliath does fine taking either ISN_ALPACA or ISN_VICUNA, does one perform better?
 
