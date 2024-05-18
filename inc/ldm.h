@@ -96,6 +96,7 @@ public:
 
 	/* load a Stable Diffusion model (1.x, 2.x, XL) from the specified path using the specified quantization. Returns true on success. */
 	bool load_from_file(const std::string& path, ggml_type wtype = GGML_TYPE_UNK);
+	bool load_from_file(const std::string& model_path, const std::string& vae_path, ggml_type wtype = GGML_TYPE_UNK);
 
 	/* attempt to load a default SD model of the given version (1 or 2, 0 will search for 2 then 1); if not available, .gguf
 	   files in the current directory are checked, if those aren't available, a model can be downloaded from the internet
@@ -122,7 +123,8 @@ public:
 	i64 get_variation_seed() const		{ return variation_seed; }
 
 	/* get the model path */
-	const std::string& get_model_path() const	{ return model_path; }
+	const std::string& get_model_path() const	{ return model_p; }
+	const std::string& get_vae_path() const	{ return vae_p; }
 
 private:
 	bool ensure_model();
@@ -132,7 +134,8 @@ private:
 	// Note that as of 12/2023 the stable-diffusion library supports .ckpt and .safetensors checkpoints!
 	sd_ctx_t* sd_model;
 
-	std::string model_path;
+	std::string model_p;
+	std::string vae_p;
 	u32 nthreads;	
 	u32 steps;
 	i64 last_seed;

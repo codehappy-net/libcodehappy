@@ -276,18 +276,31 @@ sd_type_t sdtype_from_wtype(ggml_type wtype) {
 	return SD_TYPE_F16;
 }
 
-bool SDServer::load_from_file(const std::string& path, ggml_type wtype) {
+bool SDServer::load_from_file(const std::string& model_path, const std::string& vae_path, ggml_type wtype) {
 	ScopeMutex sm(__ldm_mtx);
+	const char * model_path_cstr, * vae_path_cstr = nullptr;
 	if (sd_model != nullptr) {
 		free_sd_ctx(sd_model);
 	}
-	sd_type_t mtype = sdtype_from_wtype(wtype_from_path(path, wtype));
-	model_path = path;
-	sd_model = new_sd_ctx(path.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, false, false, false,
+
+	sd_type_t mtype = sdtype_from_wtype(wtype_from_path(model_path, wtype));
+	model_p = model_path;
+	vae_p = vae_path;
+
+	model_path_cstr = model_p.c_str();
+	if (!vae_p.empty())
+		vae_path_cstr = vae_p.c_str();
+
+	sd_model = new_sd_ctx(model_path_cstr, vae_path_cstr, nullptr, nullptr, nullptr, nullptr, nullptr, false, false, false,
 				(int) nthreads, mtype, STD_DEFAULT_RNG,
 				(schedule_t) scheduler, false, false, false);
 
 	return (sd_model != nullptr);
+}
+
+bool SDServer::load_from_file(const std::string& path, ggml_type wtype) {
+	std::string empty;
+	return load_from_file(path, empty, wtype);
 }
 
 bool SDServer::load_default_model(int sd_version, bool download_if_missing) {
@@ -355,7 +368,7 @@ void SDServer::set_nthreads(u32 nt) {
 		reload = true;
 	nthreads = nt;
 	if (reload)
-		load_from_file(model_path);
+		load_from_file(model_p, vae_p);
 }
 
 void SDServer::set_sampler_type(SDSamplerType sampler_type) {
