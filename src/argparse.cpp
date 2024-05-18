@@ -124,6 +124,8 @@ void ArgParse::ensure_args(int argc, const char* argv[]) {
 			} else if (argv[e][0] != '/') {
 				codehappy_cerr << "Unknown flag '" << w << "'\n";
 				show_help();
+			} else {
+				unenum_args.push_back(argv[e]);
 			}
 		} else {
 			/* An unenumerated/unknown option. Store it. */
