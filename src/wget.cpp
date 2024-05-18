@@ -10,7 +10,7 @@
 	Also gives FetchURI(), which uses Wget on native builds and calls the appropriate
 	libcodehappy function for WASM builds. 
 
-	Copyright (c) 2010-2022 Chris Street
+	Copyright (c) 2010-2024 Chris Street
 
 ***/
 #include "libcodehappy.h"
@@ -152,10 +152,13 @@ char* WgetFileCookies(const char *url, bool timeout, bool silent, char *cookies,
 	bname = temp_file_name(BATCH_XTN);
 	sname = temp_file_name(nullptr);
 
+#define WGET_CH_USER_AGENT "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
+
 #ifdef CODEHAPPY_WINDOWS
 	f = fopen(bname, "w");
+	// also was --no-check-certificate
 	fprintf(f,
-		"%s --user-agent=\"Mozilla/5.0\" %s%s %s %s --no-check-certificate -O %s %c%s%c 1>> %s 2>&1\n",
+		"%s --user-agent=\"" WGET_CH_USER_AGENT "\" %s%s %s %s -O %s %c%s%c 1>> %s 2>&1\n",
 		get_wget_location(),
 		(cookies != NULL) ? "--load-cookies " : "",
 		(cookies != NULL) ? cookies : "",
@@ -174,7 +177,7 @@ char* WgetFileCookies(const char *url, bool timeout, bool silent, char *cookies,
 	remove(bname);
 #else
 	sprintf(cmd,
-		"%s --user-agent=\"Mozilla/5.0\" %s%s %s %s --no-check-certificate -O %s %c%s%c > %s%s",
+		"%s --user-agent=\"" WGET_CH_USER_AGENT "\" %s%s %s %s -O %s %c%s%c > %s%s",
 		get_wget_location(),
 		(cookies != NULL) ? "--load-cookies " : "",
 		(cookies != NULL) ? cookies : "",
