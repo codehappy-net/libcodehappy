@@ -155,6 +155,15 @@
 #include "bellbottom.cpp"
 #include "ameruncial.cpp"
 #include "source-han-serif-jp.cpp"
+#include "adlib.cpp"
+#include "scripto.cpp"
+#include "rooster.cpp"
+#include "motterdam.cpp"
+#include "brooklyn.cpp"
+#include "beautiful_people.cpp"
+#include "artmars_script.cpp"
+#include "last_chronicle.cpp"
+#include "typographica.cpp"
 
 #endif  // ALL_FONTS
 

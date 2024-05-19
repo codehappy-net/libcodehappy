@@ -307,6 +307,33 @@ extern ttfont font_bellbottom;
 /*** Source Han Serif JP: a serif font covering the CJK ideographs block (IPA Gothic does too, but is sans.) ***/
 extern ttfont font_source_han_serif_jp;
 
+/*** Ad Lib: a stylish 1960s-style square countered font ***/
+extern ttfont font_adlib;
+
+/*** Scripto: curly decorative script ***/
+extern ttfont font_scripto;
+
+/*** Rooster: reminiscent of sports banners ***/
+extern ttfont font_rooster;
+
+/*** Motterdam: a calligraphy font ***/
+extern ttfont font_motterdam;
+
+/*** Brooklyn: a calligraphy font ***/
+extern ttfont font_brooklyn;
+
+/*** Beautiful People: an upright script ***/
+extern ttfont font_beautiful_people;
+
+/*** Artmars Script: a flowing sporty banner script ***/
+extern ttfont font_artmars_script;
+
+/*** Last Chronicle: a Gothic upright display script ***/
+extern ttfont font_last_chronicle;
+
+/*** Typographica: a bold design font ***/
+extern ttfont font_typographica;
+
 /***************************************************************************************************/
 /***************************************************************************************************/
 /***************************************************************************************************/
