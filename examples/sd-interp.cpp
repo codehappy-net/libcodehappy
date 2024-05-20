@@ -1,6 +1,6 @@
 /***
 
-	sd.cpp
+	sd-interp.cpp
 
 	Simple demo of Stable Diffusion interpolation.
 

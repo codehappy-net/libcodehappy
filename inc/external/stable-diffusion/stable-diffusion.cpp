@@ -1621,8 +1621,7 @@ static ggml_tensor* linear_interp_ggml_4d(ggml_tensor* i1, ggml_tensor* i2, floa
 	dim[1] = i1->ne[1];
 	dim[2] = i1->ne[2];
 	dim[3] = i1->ne[3];
-	ship_assert(i1->ne[4] <= 1);
-	ship_assert(i2->ne[4] <= 1);
+	// don't assert on ne[4], the noise vectors don't have any higher dimensions filled.
 	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2] && dim[3] == i2->ne[3]);
 
 	ggml_tensor* ret = ggml_new_tensor_4d(work_ctx, GGML_TYPE_F32, dim[0], dim[1], dim[2], dim[3]);
@@ -1699,8 +1698,6 @@ static double ggml_dot_product_4d(ggml_tensor* t1, ggml_tensor* t2) {
 	dim[1] = t1->ne[1];
 	dim[2] = t1->ne[2];
 	dim[3] = t1->ne[3];
-	ship_assert(t1->ne[4] <= 1);
-	ship_assert(t2->ne[4] <= 1);
 	ship_assert(dim[0] == t2->ne[0] && dim[1] == t2->ne[1] && dim[2] == t2->ne[2] && dim[3] == t2->ne[3]);
 
 	for (int d4 = 0; d4 < dim[3]; ++d4) {
@@ -1775,8 +1772,6 @@ static double ggml_normproduct_4d(ggml_tensor* t1, ggml_tensor* t2) {
 	dim[1] = t1->ne[1];
 	dim[2] = t1->ne[2];
 	dim[3] = t1->ne[3];
-	ship_assert(t1->ne[4] <= 1);
-	ship_assert(t2->ne[4] <= 1);
 	ship_assert(dim[0] == t2->ne[0] && dim[1] == t2->ne[1] && dim[2] == t2->ne[2] && dim[3] == t2->ne[3]);
 
 	for (int d4 = 0; d4 < dim[3]; ++d4) {
@@ -1854,8 +1849,6 @@ static ggml_tensor* ggml_wsum_4d(ggml_tensor* i1, ggml_tensor* i2, double w1, do
 	dim[1] = i1->ne[1];
 	dim[2] = i1->ne[2];
 	dim[3] = i1->ne[3];
-	ship_assert(i1->ne[4] <= 1);
-	ship_assert(i2->ne[4] <= 1);
 	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2] && dim[3] == i2->ne[3]);
 
 	ggml_tensor* ret = ggml_new_tensor_4d(work_ctx, GGML_TYPE_F32, dim[0], dim[1], dim[2], dim[3]);
@@ -1945,8 +1938,6 @@ static ggml_tensor* slerp_ggml_4d(ggml_tensor* i1, ggml_tensor* i2, float param,
 	dim[1] = i1->ne[1];
 	dim[2] = i1->ne[2];
 	dim[3] = i1->ne[3];
-	ship_assert(i1->ne[4] <= 1);
-	ship_assert(i2->ne[4] <= 1);
 	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2] && dim[3] == i2->ne[3]);
 
 	double cos_between = ggml_dot_product_4d(i1, i2) / ggml_normproduct_4d(i1, i2);
