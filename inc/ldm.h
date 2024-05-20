@@ -47,12 +47,13 @@ public:
 	                 i64 rng_seed = -1ll,
 	                 double variation_weight = 0.0,
 	                 i64* seed_return = nullptr,
-	                 int batch_count = 1);
+	                 int batch_size = 1);
 
-	/* generate an interpolated image, between two prompts and noise seeds, by spherical linear interpolation ('slerping').
-	   these can do morphs and all kinds of interesting vfx. v is the parameter [0.0, 1.0]: 0.0 fully first image, 1.0 fully the second. */
-	SBitmap* txt2img_slerp(double v,
-	                       const std::string& prompt_1,
+	/* generate interpolated images, between prompts, noise seeds, negative prompts, and/or CFG scale, by spherical
+		linear interpolation ('slerping'). this can do morphs and all kinds of interesting vfx. */
+	SBitmap** txt2img_slerp(int n_steps,
+				const std::string& prompt_1,
+				// leave this empty if you don't want to interpolate prompts
 	                       const std::string& prompt_2,
 	                       const std::string& neg_prompt_1 = default_neg_prompt,
 	                       const std::string& neg_prompt_2 = default_neg_prompt,
@@ -60,27 +61,55 @@ public:
 	                       i64 rng_seed_2 = -1ll,
 	                       u32 w = 512,
 	                       u32 h = 512,
-	                       double cfg_scale = 7.0,
+	                       double cfg_scale_1 = 7.0,
+	                       // give this a value greater than 0 to interpolate on CFG scale.
+	                       double cfg_scale_2 = 0.0,
 	                       i64* seed_return_1 = nullptr,
-	                       i64* seed_return_2 = nullptr);
+	                       i64* seed_return_2 = nullptr,
+	                       int batch_size = 1);
+
+	/* you can also do the job by filling an SDInterpolationData directly. */
+	SBitmap** txt2img_slerp(SDInterpolationData* interp_data,
+				const std::string& prompt_1,
+				const std::string& neg_prompt_1 = default_neg_prompt,
+				i64 rng_seed_1 = -1ll,
+				u32 w = 512,
+				u32 h = 512,
+				double cfg_scale_1 = 7.0,
+				i64* seed_return_1 = nullptr,
+				i64* seed_return_2 = nullptr,
+				int batch_size = 1);
 
 	/* does the interpolation as above, and places the images in the vector imgs_out. */
 	void txt2img_slerp(std::vector<SBitmap*>& imgs_out,
-	                   int n_images,
-	                   const std::string& prompt_1,
-	                   const std::string& prompt_2,
-	                   const std::string& neg_prompt_1 = default_neg_prompt,
-	                   const std::string& neg_prompt_2 = default_neg_prompt,
-	                   i64 rng_seed_1 = -1ll,
-	                   i64 rng_seed_2 = -1ll,
-	                   u32 w = 512,
-	                   u32 h = 512,
-	                   double cfg_scale = 7.0,
-	                   i64* seed_return_1 = nullptr,
-	                   i64* seed_return_2 = nullptr);
+				int n_steps,
+				const std::string& prompt_1,
+				// leave this empty if you don't want to interpolate prompts
+	                       const std::string& prompt_2,
+	                       const std::string& neg_prompt_1 = default_neg_prompt,
+	                       const std::string& neg_prompt_2 = default_neg_prompt,
+	                       i64 rng_seed_1 = -1ll,
+	                       i64 rng_seed_2 = -1ll,
+	                       u32 w = 512,
+	                       u32 h = 512,
+	                       double cfg_scale_1 = 7.0,
+	                       // give this a value greater than 0 to interpolate on CFG scale.
+	                       double cfg_scale_2 = 0.0,
+	                       i64* seed_return_1 = nullptr,
+	                       i64* seed_return_2 = nullptr,
+	                       int batch_size = 1);
 
-	/* TBI: generate a sequence of images with increasing CFG (classifier-free guidance scale) for fixed noise and text input
-	   conditioning. Because this is a kind of thing normal people might want to do. */
+	void txt2img_slerp(std::vector<SBitmap*>& imgs_out,
+				SDInterpolationData* interp_data,
+				const std::string& prompt_1,
+				const std::string& neg_prompt_1 = default_neg_prompt,
+				i64 rng_seed_1 = -1ll,
+				u32 w = 512,
+				u32 h = 512,
+				double cfg_scale_1 = 7.0,
+				i64* seed_return_1 = nullptr,
+				i64* seed_return_2 = nullptr,
+				int batch_size = 1);
 
 	/* generate a batch of images using an input image as conditioning. */
 	SBitmap** img2img(SBitmap* init_img,
@@ -92,7 +121,6 @@ public:
 	                 double variation_weight = 0.0,
 	                 i64* seed_return = nullptr,
 	                 int batch_count = 1);
-
 
 	/* load a Stable Diffusion model (1.x, 2.x, XL) from the specified path using the specified quantization. Returns true on success. */
 	bool load_from_file(const std::string& path, ggml_type wtype = GGML_TYPE_UNK);

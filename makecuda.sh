@@ -61,6 +61,7 @@ g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/thegame.cpp -
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -DCODEHAPPY_CUDA -c examples/sd.cpp -o sd.o
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -DCODEHAPPY_CUDA -c examples/bertembed.cpp -o bertembed.o
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -DCODEHAPPY_CUDA -c examples/llava.cpp -o llava.o
+g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -DCODEHAPPY_CUDA -c examples/sd-interp.cpp -o sd-interp.o
 g++ -O3 -flto -fPIC -pthread -m64 $CUDA_INC_DIRS -Iinc -c examples/sam-img.cpp -o sam-img.o
 g++ -O3 -flto -m64 llamatok.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o  llamatok
 g++ -O3 -flto -m64 llamagen.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o  llamagen
@@ -73,6 +74,8 @@ g++ -O3 -flto -m64 sd.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o sd-cuda
 g++ -O3 -flto -m64 thegame.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o thegame
 g++ -O3 -flto -m64 bertembed.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o bertembed
 g++ -O3 -flto -m64 llava.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o llava
+g++ -O3 -flto -m64 sd-interp.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o sd-interp
+g++ -O3 -flto -m64 sam-img.o bin/libcodehappycuda.a $CUDA_LIBRARIES -o sam-img
 
 echo "*** Cleanup"
 rm *.o

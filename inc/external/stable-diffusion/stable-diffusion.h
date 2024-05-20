@@ -112,6 +112,44 @@ typedef struct {
 
 typedef struct sd_ctx_t sd_ctx_t;
 
+/*** CMS: support interpolation between guided conditioning (two prompts), noise (two random seeds), unguided conditioning (two negative prompts),
+	classifier-free guidance (two CFG scale values), or any combination of the above. ***/
+struct SDInterpolationData {
+	SDInterpolationData();
+	// the maximum number of steps for interpolation.
+	int max_steps;
+	// the current iteration step (this is updated by txt2img by batch size, you don't need to update it although you can.)
+	int cur_step;
+	// if prompt2 is non-empty we interpolate between prompt and prompt2
+	std::string prompt2;
+	// if neg_prompt2 is non-empty we interpolate between negative prompts.
+	std::string neg_prompt2;
+	// if seed2 is >= 0 we can interpolate between noise as well.
+	int64_t seed2;
+	// if CFG is > 0 we interpolate between classifier-free guidance scales.
+	float cfg;
+	// tensors used in interpolation -- these are used and freed by the inference code.
+	// destination tensors
+	ggml_tensor* c2;
+	ggml_tensor* c_vector2;
+	ggml_tensor* uc2;
+	ggml_tensor* uc_vector2;
+	ggml_tensor* x_t2;
+	ggml_tensor* noise2;
+	// interpolated tensors
+	ggml_tensor* c_use;
+	ggml_tensor* c_vector_use;
+	ggml_tensor* uc_use;
+	ggml_tensor* uc_vector_use;
+	ggml_tensor* x_t_use;
+	ggml_tensor* noise_use;
+	// interpolated CFG scale
+	float cfg_use;
+	// update the data for the next iteration.
+	void update();
+	void clear_tensors();
+};
+
 SD_API sd_ctx_t* new_sd_ctx(const char* model_path,
                             const char* vae_path,
                             const char* taesd_path,
@@ -132,6 +170,7 @@ SD_API sd_ctx_t* new_sd_ctx(const char* model_path,
 
 SD_API void free_sd_ctx(sd_ctx_t* sd_ctx);
 
+/*** CMS: add interpolation ***/
 SD_API sd_image_t* txt2img(sd_ctx_t* sd_ctx,
                            const char* prompt,
                            const char* negative_prompt,
@@ -147,7 +186,8 @@ SD_API sd_image_t* txt2img(sd_ctx_t* sd_ctx,
                            float control_strength,
                            float style_strength,
                            bool normalize_input,
-                           const char* input_id_images_path);
+                           const char* input_id_images_path,
+                           SDInterpolationData* interp_data = nullptr);
 
 SD_API sd_image_t* img2img(sd_ctx_t* sd_ctx,
                            sd_image_t init_image,
@@ -166,7 +206,8 @@ SD_API sd_image_t* img2img(sd_ctx_t* sd_ctx,
                            float control_strength,
                            float style_strength,
                            bool normalize_input,
-                           const char* input_id_images_path);
+                           const char* input_id_images_path,
+                           SDInterpolationData* interp_data = nullptr);
 
 SD_API sd_image_t* img2vid(sd_ctx_t* sd_ctx,
                            sd_image_t init_image,

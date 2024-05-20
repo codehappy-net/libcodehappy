@@ -1556,6 +1556,449 @@ void free_sd_ctx(sd_ctx_t* sd_ctx) {
     free(sd_ctx);
 }
 
+/*** CMS (May '24: interpolate two ggml tensors. parameterized as [0., 1.] with 0. meaning "fully the first tensor" and 1. "fully the second". ***/
+//// First: linear interpolation functions.
+static float interp_float(float f1, float f2, float param) {
+	return (param * f2) + ((1.0 - param) * f1);
+}
+
+static ggml_tensor* linear_interp_ggml_1d(ggml_tensor* i1, ggml_tensor* i2, float param, struct ggml_context* work_ctx) {
+	std::vector<float> ret_vec;
+	if (is_null(i1))
+		return i2;
+	if (is_null(i2))
+		return i1;
+	int dim;
+	dim = i1->ne[0];
+	ship_assert(i1->ne[1] <= 1);
+	ship_assert(i2->ne[1] <= 1);
+	ship_assert(dim == i2->ne[0]);
+	float * i1_data = (float *) i1->data, * i2_data = (float *) i2->data;
+	for (int d1 = 0; d1 < dim; ++d1) {
+		ret_vec.push_back(interp_float(i1_data[d1], i2_data[d1], param));
+	}
+
+	ggml_tensor* ret = vector_to_ggml_tensor(work_ctx, ret_vec);
+	return ret;
+}
+
+static ggml_tensor* linear_interp_ggml_3d(ggml_tensor* i1, ggml_tensor* i2, float param, struct ggml_context* work_ctx) {
+	if (is_null(i1))
+		return i2;
+	if (is_null(i2))
+		return i1;
+	int dim[3];
+	dim[0] = i1->ne[0];
+	dim[1] = i1->ne[1];
+	dim[2] = i1->ne[2];
+	ship_assert(i1->ne[3] <= 1);
+	ship_assert(i2->ne[3] <= 1);
+	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2]);
+
+	ggml_tensor* ret = ggml_new_tensor_3d(work_ctx, GGML_TYPE_F32, dim[0], dim[1], dim[2]);
+
+	for (int d3 = 0; d3 < dim[2]; ++d3) {
+		for (int d2 = 0; d2 < dim[1]; ++d2) {
+			for (int d1 = 0; d1 < dim[0]; ++d1) {
+				float f1 = ggml_tensor_get_f32(i1, d1, d2, d3);
+				float f2 = ggml_tensor_get_f32(i2, d1, d2, d3);
+				f1 = interp_float(f1, f2, param);
+				ggml_tensor_set_f32(ret, f1, d1, d2, d3);
+			}
+		}
+	}
+
+	return ret;
+}
+
+static ggml_tensor* linear_interp_ggml_4d(ggml_tensor* i1, ggml_tensor* i2, float param, struct ggml_context* work_ctx) {
+	if (is_null(i1))
+		return i2;
+	if (is_null(i2))
+		return i1;
+	int dim[4];
+	dim[0] = i1->ne[0];
+	dim[1] = i1->ne[1];
+	dim[2] = i1->ne[2];
+	dim[3] = i1->ne[3];
+	ship_assert(i1->ne[4] <= 1);
+	ship_assert(i2->ne[4] <= 1);
+	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2] && dim[3] == i2->ne[3]);
+
+	ggml_tensor* ret = ggml_new_tensor_4d(work_ctx, GGML_TYPE_F32, dim[0], dim[1], dim[2], dim[3]);
+
+	for (int d4 = 0; d4 < dim[3]; ++d4) {
+		for (int d3 = 0; d3 < dim[2]; ++d3) {
+			for (int d2 = 0; d2 < dim[1]; ++d2) {
+				for (int d1 = 0; d1 < dim[0]; ++d1) {
+					float f1 = ggml_tensor_get_f32(i1, d1, d2, d3, d4);
+					float f2 = ggml_tensor_get_f32(i2, d1, d2, d3, d4);
+					f1 = interp_float(f1, f2, param);
+					ggml_tensor_set_f32(ret, f1, d1, d2, d3, d4);
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+//// Now: slerping (spherical interpolations.)
+static double ggml_dot_product_1d(ggml_tensor* t1, ggml_tensor* t2) {
+	double ret = 0.0;
+	int dim;
+
+	ship_assert(t1 != nullptr && t2 != nullptr);
+
+	dim = t1->ne[0];
+	ship_assert(t1->ne[1] <= 1);
+	ship_assert(t2->ne[1] <= 1);
+	ship_assert(dim == t2->ne[0]);
+
+	float * t1_data = (float *) t1->data, * t2_data = (float *) t2->data;
+	for (int d1 = 0; d1 < dim; ++d1) {
+		ret += (t1_data[d1] * t2_data[d1]);
+	}
+
+	return ret;
+}
+
+static double ggml_dot_product_3d(ggml_tensor* t1, ggml_tensor* t2) {
+	double ret = 0.0;
+	int dim[3];
+
+	ship_assert(t1 != nullptr && t2 != nullptr);
+
+	dim[0] = t1->ne[0];
+	dim[1] = t1->ne[1];
+	dim[2] = t1->ne[2];
+	ship_assert(t1->ne[3] <= 1);
+	ship_assert(t2->ne[3] <= 1);
+	ship_assert(dim[0] == t2->ne[0] && dim[1] == t2->ne[1] && dim[2] == t2->ne[2]);
+
+	for (int d3 = 0; d3 < dim[2]; ++d3) {
+		for (int d2 = 0; d2 < dim[1]; ++d2) {
+			for (int d1 = 0; d1 < dim[0]; ++d1) {
+				float f1 = ggml_tensor_get_f32(t1, d1, d2, d3);
+				float f2 = ggml_tensor_get_f32(t2, d1, d2, d3);
+				ret += (f1 * f2);
+			}
+		}
+	}
+
+	return ret;
+}
+
+static double ggml_dot_product_4d(ggml_tensor* t1, ggml_tensor* t2) {
+	double ret = 0.0;
+	int dim[4];
+
+	ship_assert(t1 != nullptr && t2 != nullptr);
+
+	dim[0] = t1->ne[0];
+	dim[1] = t1->ne[1];
+	dim[2] = t1->ne[2];
+	dim[3] = t1->ne[3];
+	ship_assert(t1->ne[4] <= 1);
+	ship_assert(t2->ne[4] <= 1);
+	ship_assert(dim[0] == t2->ne[0] && dim[1] == t2->ne[1] && dim[2] == t2->ne[2] && dim[3] == t2->ne[3]);
+
+	for (int d4 = 0; d4 < dim[3]; ++d4) {
+		for (int d3 = 0; d3 < dim[2]; ++d3) {
+			for (int d2 = 0; d2 < dim[1]; ++d2) {
+				for (int d1 = 0; d1 < dim[0]; ++d1) {
+					float f1 = ggml_tensor_get_f32(t1, d1, d2, d3, d4);
+					float f2 = ggml_tensor_get_f32(t2, d1, d2, d3, d4);
+					ret += (f1 * f2);
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+static double ggml_normproduct_1d(ggml_tensor* t1, ggml_tensor* t2) {
+	double mag1 = 0.0, mag2 = 0.0;
+	int dim;
+
+	ship_assert(t1 != nullptr && t2 != nullptr);
+
+	dim = t1->ne[0];
+	ship_assert(t1->ne[1] <= 1);
+	ship_assert(t2->ne[1] <= 1);
+	ship_assert(dim == t2->ne[0]);
+
+	float * t1_data = (float *) t1->data, * t2_data = (float *) t2->data;
+	for (int d1 = 0; d1 < dim; ++d1) {
+		mag1 += double(t1_data[d1] * t1_data[d1]);
+		mag2 += double(t2_data[d1] * t2_data[d1]);
+	}
+
+	return sqrt(mag1) * sqrt(mag2);
+}
+
+static double ggml_normproduct_3d(ggml_tensor* t1, ggml_tensor* t2) {
+	double mag1 = 0.0, mag2 = 0.0;
+	int dim[3];
+
+	ship_assert(t1 != nullptr && t2 != nullptr);
+
+	dim[0] = t1->ne[0];
+	dim[1] = t1->ne[1];
+	dim[2] = t1->ne[2];
+	ship_assert(t1->ne[3] <= 1);
+	ship_assert(t2->ne[3] <= 1);
+	ship_assert(dim[0] == t2->ne[0] && dim[1] == t2->ne[1] && dim[2] == t2->ne[2]);
+
+	for (int d3 = 0; d3 < dim[2]; ++d3) {
+		for (int d2 = 0; d2 < dim[1]; ++d2) {
+			for (int d1 = 0; d1 < dim[0]; ++d1) {
+				float f1 = ggml_tensor_get_f32(t1, d1, d2, d3);
+				float f2 = ggml_tensor_get_f32(t2, d1, d2, d3);
+				mag1 += double(f1 * f1);
+				mag2 += double(f2 * f2);
+			}
+		}
+	}
+
+	return sqrt(mag1) * sqrt(mag2);
+}
+
+static double ggml_normproduct_4d(ggml_tensor* t1, ggml_tensor* t2) {
+	double mag1 = 0.0, mag2 = 0.0;
+	int dim[4];
+
+	ship_assert(t1 != nullptr && t2 != nullptr);
+
+	dim[0] = t1->ne[0];
+	dim[1] = t1->ne[1];
+	dim[2] = t1->ne[2];
+	dim[3] = t1->ne[3];
+	ship_assert(t1->ne[4] <= 1);
+	ship_assert(t2->ne[4] <= 1);
+	ship_assert(dim[0] == t2->ne[0] && dim[1] == t2->ne[1] && dim[2] == t2->ne[2] && dim[3] == t2->ne[3]);
+
+	for (int d4 = 0; d4 < dim[3]; ++d4) {
+		for (int d3 = 0; d3 < dim[2]; ++d3) {
+			for (int d2 = 0; d2 < dim[1]; ++d2) {
+				for (int d1 = 0; d1 < dim[0]; ++d1) {
+					float f1 = ggml_tensor_get_f32(t1, d1, d2, d3, d4);
+					float f2 = ggml_tensor_get_f32(t2, d1, d2, d3, d4);
+					mag1 += double(f1 * f1);
+					mag2 += double(f2 * f2);
+				}
+			}
+		}
+	}
+
+	return sqrt(mag1) * sqrt(mag2);
+}
+
+static ggml_tensor* ggml_wsum_1d(ggml_tensor* i1, ggml_tensor* i2, double w1, double w2, struct ggml_context* work_ctx) {
+	std::vector<float> ret_vec;
+	if (is_null(i1))
+		return i2;
+	if (is_null(i2))
+		return i1;
+	int dim;
+	dim = i1->ne[0];
+	ship_assert(i1->ne[1] <= 1);
+	ship_assert(i2->ne[1] <= 1);
+	ship_assert(dim == i2->ne[0]);
+	float * i1_data = (float *) i1->data, * i2_data = (float *) i2->data;
+	for (int d1 = 0; d1 < dim; ++d1) {
+		ret_vec.push_back(i1_data[d1] * w1 + i2_data[d1] * w2);
+	}
+
+	ggml_tensor* ret = vector_to_ggml_tensor(work_ctx, ret_vec);
+	return ret;
+}
+
+static ggml_tensor* ggml_wsum_3d(ggml_tensor* i1, ggml_tensor* i2, double w1, double w2, struct ggml_context* work_ctx) {
+	if (is_null(i1))
+		return i2;
+	if (is_null(i2))
+		return i1;
+	int dim[3];
+	dim[0] = i1->ne[0];
+	dim[1] = i1->ne[1];
+	dim[2] = i1->ne[2];
+	ship_assert(i1->ne[3] <= 1);
+	ship_assert(i2->ne[3] <= 1);
+	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2]);
+
+	ggml_tensor* ret = ggml_new_tensor_3d(work_ctx, GGML_TYPE_F32, dim[0], dim[1], dim[2]);
+
+	for (int d3 = 0; d3 < dim[2]; ++d3) {
+		for (int d2 = 0; d2 < dim[1]; ++d2) {
+			for (int d1 = 0; d1 < dim[0]; ++d1) {
+				float f1 = ggml_tensor_get_f32(i1, d1, d2, d3);
+				float f2 = ggml_tensor_get_f32(i2, d1, d2, d3);
+				f1 = (f1 * w1) + (f2 * w2);
+				ggml_tensor_set_f32(ret, f1, d1, d2, d3);
+			}
+		}
+	}
+
+	return ret;
+}
+
+static ggml_tensor* ggml_wsum_4d(ggml_tensor* i1, ggml_tensor* i2, double w1, double w2, struct ggml_context* work_ctx) {
+	if (is_null(i1))
+		return i2;
+	if (is_null(i2))
+		return i1;
+	int dim[4];
+	dim[0] = i1->ne[0];
+	dim[1] = i1->ne[1];
+	dim[2] = i1->ne[2];
+	dim[3] = i1->ne[3];
+	ship_assert(i1->ne[4] <= 1);
+	ship_assert(i2->ne[4] <= 1);
+	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2] && dim[3] == i2->ne[3]);
+
+	ggml_tensor* ret = ggml_new_tensor_4d(work_ctx, GGML_TYPE_F32, dim[0], dim[1], dim[2], dim[3]);
+
+	for (int d4 = 0; d4 < dim[3]; ++d4) {
+		for (int d3 = 0; d3 < dim[2]; ++d3) {
+			for (int d2 = 0; d2 < dim[1]; ++d2) {
+				for (int d1 = 0; d1 < dim[0]; ++d1) {
+					float f1 = ggml_tensor_get_f32(i1, d1, d2, d3, d4);
+					float f2 = ggml_tensor_get_f32(i2, d1, d2, d3, d4);
+					f1 = (f1 * w1) + (f2 * w2);
+					ggml_tensor_set_f32(ret, f1, d1, d2, d3, d4);
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+const double DOT_THRESHOLD = 0.9995;
+
+static ggml_tensor* slerp_ggml_1d(ggml_tensor* i1, ggml_tensor* i2, float param, struct ggml_context* work_ctx) {
+	std::vector<float> ret_vec;
+	if (is_null(i1))
+		return i2;
+	if (is_null(i2))
+		return i1;
+	int dim;
+	dim = i1->ne[0];
+	ship_assert(i1->ne[1] <= 1);
+	ship_assert(i2->ne[1] <= 1);
+	ship_assert(dim == i2->ne[0]);
+
+	double cos_between = ggml_dot_product_1d(i1, i2) / ggml_normproduct_1d(i1, i2);
+	if (fabs(cos_between) > DOT_THRESHOLD) {
+		// use the regular linear interpolation
+		return linear_interp_ggml_1d(i1, i2, param, work_ctx);
+	}
+
+	double theta_0 = acos(cos_between);
+	double sin_theta_0 = sin(theta_0);
+	double theta_t = theta_0 * param;
+	double sin_theta_t = sin(theta_t);
+	double s0 = sin(theta_0 - theta_t) / sin_theta_0;
+	double s1 = sin_theta_t / sin_theta_0;
+
+	return ggml_wsum_1d(i1, i2, s0, s1, work_ctx);
+}
+
+static ggml_tensor* slerp_ggml_3d(ggml_tensor* i1, ggml_tensor* i2, float param, struct ggml_context* work_ctx) {
+	if (is_null(i1))
+		return i2;
+	if (is_null(i2))
+		return i1;
+	int dim[3];
+	dim[0] = i1->ne[0];
+	dim[1] = i1->ne[1];
+	dim[2] = i1->ne[2];
+	ship_assert(i1->ne[3] <= 1);
+	ship_assert(i2->ne[3] <= 1);
+	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2]);
+
+	double cos_between = ggml_dot_product_3d(i1, i2) / ggml_normproduct_3d(i1, i2);
+	if (fabs(cos_between) > DOT_THRESHOLD) {
+		// use the regular linear interpolation
+		return linear_interp_ggml_3d(i1, i2, param, work_ctx);
+	}
+
+	double theta_0 = acos(cos_between);
+	double sin_theta_0 = sin(theta_0);
+	double theta_t = theta_0 * param;
+	double sin_theta_t = sin(theta_t);
+	double s0 = sin(theta_0 - theta_t) / sin_theta_0;
+	double s1 = sin_theta_t / sin_theta_0;
+
+	return ggml_wsum_3d(i1, i2, s0, s1, work_ctx);
+}
+
+static ggml_tensor* slerp_ggml_4d(ggml_tensor* i1, ggml_tensor* i2, float param, struct ggml_context* work_ctx) {
+	if (is_null(i1))
+		return i2;
+	if (is_null(i2))
+		return i1;
+	int dim[4];
+	dim[0] = i1->ne[0];
+	dim[1] = i1->ne[1];
+	dim[2] = i1->ne[2];
+	dim[3] = i1->ne[3];
+	ship_assert(i1->ne[4] <= 1);
+	ship_assert(i2->ne[4] <= 1);
+	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2] && dim[3] == i2->ne[3]);
+
+	double cos_between = ggml_dot_product_4d(i1, i2) / ggml_normproduct_4d(i1, i2);
+	if (fabs(cos_between) > DOT_THRESHOLD) {
+		// use the regular linear interpolation
+		return linear_interp_ggml_4d(i1, i2, param, work_ctx);
+	}
+
+	double theta_0 = acos(cos_between);
+	double sin_theta_0 = sin(theta_0);
+	double theta_t = theta_0 * param;
+	double sin_theta_t = sin(theta_t);
+	double s0 = sin(theta_0 - theta_t) / sin_theta_0;
+	double s1 = sin_theta_t / sin_theta_0;
+
+	return ggml_wsum_4d(i1, i2, s0, s1, work_ctx);
+}
+
+SDInterpolationData::SDInterpolationData() {
+	seed2 = -1;
+	max_steps = 0;
+	cur_step = 0;
+	cfg = 0.;
+	clear_tensors();
+}
+
+void SDInterpolationData::update() {
+	++cur_step;
+	// clear calculated tensors: this memory is handled by GGML.
+	clear_tensors();
+}
+
+void SDInterpolationData::clear_tensors() {
+	c2 = nullptr;
+	c_vector2 = nullptr;
+	uc2 = nullptr;
+	uc_vector2 = nullptr;
+	x_t2 = nullptr;
+	noise2 = nullptr;
+	c_use = nullptr;
+	c_vector_use = nullptr;
+	uc_use = nullptr;
+	uc_vector_use = nullptr;
+	x_t_use = nullptr;
+	noise_use = nullptr;
+}
+
+static bool interpolating(SDInterpolationData* interp_data) {
+	return (interp_data != nullptr) && (interp_data->max_steps > 0);
+}
+
+/*** CMS (May '24: stable diffusion inference modified to support various interpolations ***/
 sd_image_t* generate_image(sd_ctx_t* sd_ctx,
                            struct ggml_context* work_ctx,
                            ggml_tensor* init_latent,
@@ -1573,7 +2016,8 @@ sd_image_t* generate_image(sd_ctx_t* sd_ctx,
                            float control_strength,
                            float style_ratio,
                            bool normalize_input,
-                           std::string input_id_images_path) {
+                           std::string input_id_images_path,
+                           SDInterpolationData* interp_data) {
     if (seed < 0) {
         // Generally, when using the provided command line, the seed is always >0.
         // However, to prevent potential issues if 'stable-diffusion.cpp' is invoked as a library
@@ -1698,6 +2142,11 @@ sd_image_t* generate_image(sd_ctx_t* sd_ctx,
     auto cond_pair        = sd_ctx->sd->get_learned_condition(work_ctx, prompt, clip_skip, width, height);
     ggml_tensor* c        = cond_pair.first;
     ggml_tensor* c_vector = cond_pair.second;  // [adm_in_channels, ]
+    if (interpolating(interp_data) && !interp_data->prompt2.empty()) {
+    	auto cond2 = sd_ctx->sd->get_learned_condition(work_ctx, interp_data->prompt2, clip_skip, width, height);
+    	interp_data->c2 = cond2.first;
+    	interp_data->c_vector2 = cond2.second;
+    }
 
     struct ggml_tensor* uc        = NULL;
     struct ggml_tensor* uc_vector = NULL;
@@ -1709,6 +2158,11 @@ sd_image_t* generate_image(sd_ctx_t* sd_ctx,
         auto uncond_pair = sd_ctx->sd->get_learned_condition(work_ctx, negative_prompt, clip_skip, width, height, force_zero_embeddings);
         uc               = uncond_pair.first;
         uc_vector        = uncond_pair.second;  // [adm_in_channels, ]
+        if (interpolating(interp_data) && !interp_data->neg_prompt2.empty()) {
+        	auto uncond2 = sd_ctx->sd->get_learned_condition(work_ctx, interp_data->neg_prompt2, clip_skip, width, height, false);
+        	interp_data->uc2 = uncond2.first;
+        	interp_data->uc_vector2 = uncond2.second;
+        }
     }
     t1 = ggml_time_ms();
     LOG_INFO("get_learned_condition completed, taking %" PRId64 " ms", t1 - t0);
@@ -1732,7 +2186,7 @@ sd_image_t* generate_image(sd_ctx_t* sd_ctx,
     LOG_INFO("sampling using %s method", sampling_methods_str[sample_method]);
     for (int b = 0; b < batch_count; b++) {
         int64_t sampling_start = ggml_time_ms();
-        int64_t cur_seed       = seed + b;
+        int64_t cur_seed       = (interpolating(interp_data) ? seed : seed + b);
         LOG_INFO("generating image: %i/%i - seed %i", b + 1, batch_count, cur_seed);
 
         sd_ctx->sd->rng->manual_seed(cur_seed);
@@ -1746,6 +2200,18 @@ sd_image_t* generate_image(sd_ctx_t* sd_ctx,
             noise = ggml_new_tensor_4d(work_ctx, GGML_TYPE_F32, W, H, C, 1);
             ggml_tensor_set_f32_randn(noise, sd_ctx->sd->rng);
         }
+        if (interpolating(interp_data) && interp_data->seed2 >= 0) {
+        	sd_ctx->sd->rng->manual_seed(interp_data->seed2);
+        	if (init_latent == nullptr) {
+        		interp_data->x_t2 = ggml_new_tensor_4d(work_ctx, GGML_TYPE_F32, W, H, C, 1);
+	        	ggml_tensor_set_f32_randn(interp_data->x_t2, sd_ctx->sd->rng);
+	        	interp_data->noise2 = nullptr;
+        	} else {
+        		interp_data->x_t2 = init_latent;
+        		interp_data->noise2 = ggml_new_tensor_4d(work_ctx, GGML_TYPE_F32, W, H, C, 1);
+	        	ggml_tensor_set_f32_randn(interp_data->x_t2, sd_ctx->sd->rng);        		
+	        }
+	}
 
         int start_merge_step = -1;
         if (sd_ctx->sd->stacked_id) {
@@ -1755,24 +2221,65 @@ sd_image_t* generate_image(sd_ctx_t* sd_ctx,
             LOG_INFO("PHOTOMAKER: start_merge_step: %d", start_merge_step);
         }
 
-        struct ggml_tensor* x_0 = sd_ctx->sd->sample(work_ctx,
-                                                     x_t,
-                                                     noise,
-                                                     c,
-                                                     NULL,
-                                                     c_vector,
-                                                     uc,
-                                                     NULL,
-                                                     uc_vector,
-                                                     image_hint,
-                                                     control_strength,
-                                                     cfg_scale,
-                                                     cfg_scale,
-                                                     sample_method,
-                                                     sigmas,
-                                                     start_merge_step,
-                                                     prompts_embeds,
-                                                     pooled_prompts_embeds);
+	struct ggml_tensor* x_0;
+        if (interpolating(interp_data)) {
+		// the actual interpolation. we have potentially c/uc (3 dimensions), {u}c_vector (1 dimension), x_t and noise (4 dimensions)
+		// and cfg (a scalar float.)
+		float param = float(interp_data->cur_step) / float(interp_data->max_steps);
+		if (interp_data->cfg > 0.)
+			interp_data->cfg_use = interp_float(cfg_scale, interp_data->cfg, param);
+		else
+			interp_data->cfg_use = cfg_scale;
+
+		// spherical interpolation between the tensors. 
+		interp_data->c_use = slerp_ggml_3d(c, interp_data->c2, param, work_ctx);
+		interp_data->c_vector_use = slerp_ggml_1d(c_vector, interp_data->c_vector2, param, work_ctx);
+		interp_data->uc_use = slerp_ggml_3d(uc, interp_data->uc2, param, work_ctx);
+		interp_data->uc_vector_use = slerp_ggml_1d(uc_vector, interp_data->uc_vector2, param, work_ctx);
+		interp_data->x_t_use = slerp_ggml_4d(x_t, interp_data->x_t2, param, work_ctx);
+		interp_data->noise_use = slerp_ggml_4d(noise, interp_data->noise2, param, work_ctx);
+
+		x_0 = sd_ctx->sd->sample(work_ctx,
+		                             interp_data->x_t_use,
+		                             interp_data->noise_use,
+		                             interp_data->c_use,
+		                             NULL,
+		                             interp_data->c_vector_use,
+		                             interp_data->uc_use,
+		                             NULL,
+		                             interp_data->uc_vector_use,
+		                             image_hint,
+		                             control_strength,
+		                             interp_data->cfg_use,
+		                             interp_data->cfg_use,
+		                             sample_method,
+		                             sigmas,
+		                             start_merge_step,
+		                             prompts_embeds,
+		                             pooled_prompts_embeds);
+
+		// update the interpolation step.
+		interp_data->update();
+        } else {
+		x_0 = sd_ctx->sd->sample(work_ctx,
+				              x_t,
+				              noise,
+				              c,
+				              NULL,
+				              c_vector,
+				              uc,
+				              NULL,
+				              uc_vector,
+				              image_hint,
+				              control_strength,
+				              cfg_scale,
+				              cfg_scale,
+				              sample_method,
+				              sigmas,
+				              start_merge_step,
+				              prompts_embeds,
+				              pooled_prompts_embeds);
+        }
         // struct ggml_tensor* x_0 = load_tensor_from_file(ctx, "samples_ddim.bin");
         // print_ggml_tensor(x_0);
         int64_t sampling_end = ggml_time_ms();
@@ -1837,7 +2344,8 @@ sd_image_t* txt2img(sd_ctx_t* sd_ctx,
                     float control_strength,
                     float style_ratio,
                     bool normalize_input,
-                    const char* input_id_images_path_c_str) {
+                    const char* input_id_images_path_c_str,
+                    SDInterpolationData* interp_data) {
     LOG_DEBUG("txt2img %dx%d", width, height);
     if (sd_ctx == NULL) {
         return NULL;
@@ -1881,7 +2389,8 @@ sd_image_t* txt2img(sd_ctx_t* sd_ctx,
                                                control_strength,
                                                style_ratio,
                                                normalize_input,
-                                               (input_id_images_path_c_str == nullptr) ? "" : input_id_images_path_c_str);
+                                               (input_id_images_path_c_str == nullptr) ? "" : input_id_images_path_c_str,
+                                               interp_data);
 
     size_t t1 = ggml_time_ms();
 
@@ -1907,7 +2416,8 @@ sd_image_t* img2img(sd_ctx_t* sd_ctx,
                     float control_strength,
                     float style_ratio,
                     bool normalize_input,
-                    const char* input_id_images_path_c_str) {
+                    const char* input_id_images_path_c_str,
+                    SDInterpolationData* interp_data) {
     LOG_DEBUG("img2img %dx%d", width, height);
     if (sd_ctx == NULL) {
         return NULL;
@@ -1974,7 +2484,8 @@ sd_image_t* img2img(sd_ctx_t* sd_ctx,
                                                control_strength,
                                                style_ratio,
                                                normalize_input,
-                                               (input_id_images_path_c_str == nullptr) ? "" : input_id_images_path_c_str);
+                                               (input_id_images_path_c_str == nullptr) ? "" : input_id_images_path_c_str,
+                                               interp_data);
 
     size_t t2 = ggml_time_ms();
 

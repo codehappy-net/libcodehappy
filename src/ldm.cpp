@@ -69,7 +69,7 @@ SDServer::~SDServer() {
 }
 
 SBitmap** SDServer::txt2img(const std::string& prompt, const std::string& neg_prompt, u32 w, u32 h, double cfg_scale,
-                            i64 rng_seed, double variation_weight, i64* seed_return, int batch_count) {
+                            i64 rng_seed, double variation_weight, i64* seed_return, int batch_size) {
 	sd_image_t* output;
 	SBitmap** ret = nullptr;
 	i64 seed;
@@ -78,7 +78,7 @@ SBitmap** SDServer::txt2img(const std::string& prompt, const std::string& neg_pr
 	if (!ensure_model())
 		return ret;
 
-	if (rng_seed != -1) {
+	if (rng_seed > -1) {
 		seed = rng_seed;
 	} else {
 		seed = RandI64();
@@ -97,18 +97,18 @@ SBitmap** SDServer::txt2img(const std::string& prompt, const std::string& neg_pr
 			(sample_method_t) sampler,
 			steps,
 			seed,
-			batch_count,
+			batch_size,
 			nullptr, /* control_cond */
 			0., /* control_strength */
 			0., /* style strength */
 			false, /* normalize_input */
 			nullptr /* input_id_images_path */ );
 
-		ret = new SBitmap * [batch_count];
-		for (int e = 0; e < batch_count; ++e) {
+		ret = new SBitmap * [batch_size];
+		for (int e = 0; e < batch_size; ++e) {
 			ret[e] = sdimg_to_bmp(output, e);
 		}
-		free_sdimg(output, batch_count);
+		free_sdimg(output, batch_size);
 		if (!is_null(ret)) {
 			last_seed = seed;
 			if (!is_null(seed_return)) {
@@ -122,30 +122,107 @@ SBitmap** SDServer::txt2img(const std::string& prompt, const std::string& neg_pr
 	return ret;
 }
 
-SBitmap* SDServer::txt2img_slerp(double v, const std::string& prompt_1, const std::string& prompt_2, const std::string& neg_prompt_1,
-                                 const std::string& neg_prompt_2, i64 rng_seed_1, i64 rng_seed_2, u32 w, u32 h, double cfg_scale,
-                                 i64* seed_return_1, i64* seed_return_2) {
-	// TBI
-	return nullptr;
+
+SBitmap** SDServer::txt2img_slerp(int n_steps, const std::string& prompt_1, const std::string& prompt_2, const std::string& neg_prompt_1,
+		const std::string& neg_prompt_2, i64 rng_seed_1, i64 rng_seed_2, u32 w, u32 h, double cfg_scale_1, double cfg_scale_2,
+		i64* seed_return_1, i64* seed_return_2, int batch_size) {
+	SDInterpolationData sdid;
+
+	sdid.max_steps = n_steps;
+	sdid.cur_step = 0;
+	sdid.prompt2 = prompt_2;
+	sdid.neg_prompt2 = neg_prompt_2;
+	sdid.seed2 = rng_seed_2;
+	sdid.cfg = cfg_scale_2;
+	
+	return txt2img_slerp(&sdid, prompt_1, neg_prompt_1, rng_seed_1, w, h, cfg_scale_1, seed_return_1, seed_return_2, batch_size);
 }
 
-void SDServer::txt2img_slerp(std::vector<SBitmap*>& imgs_out, int n_images, const std::string& prompt_1, const std::string& prompt_2,
-                             const std::string& neg_prompt_1, const std::string& neg_prompt_2, i64 rng_seed_1, i64 rng_seed_2,
-                             u32 w, u32 h, double cfg_scale, i64* seed_return_1, i64* seed_return_2) {
-	int e;
-	std::vector<double> vs;
-	if (n_images < 1)
+SBitmap** SDServer::txt2img_slerp(SDInterpolationData* interp_data, const std::string& prompt_1, const std::string& neg_prompt_1,
+		i64 rng_seed_1, u32 w, u32 h, double cfg_scale_1, i64* seed_return_1, i64* seed_return_2, int batch_size) {
+	/* the core txt2img_slerp() function. */
+	SBitmap ** ret;
+	sd_image_t* batch;
+	i64 seed1, seed2;
+	int bs_use, i = 0;
+
+	ship_assert(interp_data != nullptr);
+	if (rng_seed_1 > -1) {
+		seed1 = rng_seed_1;
+	} else {
+		seed1 = RandI64();
+		if (seed1 < 0)
+			seed1 = -seed1;
+	}
+	if (interp_data->seed2 >= 0) {
+		seed2 = interp_data->seed2;
+	} else {
+		seed2 = seed1;
+	}
+
+
+	ret = new SBitmap * [interp_data->max_steps];
+	NOT_NULL_OR_RETURN(ret, ret);
+
+	while (interp_data->cur_step < interp_data->max_steps) {
+		bs_use = std::min((interp_data->max_steps - interp_data->cur_step), batch_size);
+		batch = ::txt2img(sd_model, 
+			(prompt_1.empty() ? nullptr : prompt_1.c_str()),
+			(neg_prompt_1.empty() ? nullptr : neg_prompt_1.c_str()),
+			0, /* clip skip */
+			cfg_scale_1,
+			w,
+			h,
+			(sample_method_t) sampler,
+			steps,
+			seed1,
+			bs_use,
+			nullptr, /* control_cond */
+			0., /* control_strength */
+			0., /* style strength */
+			false, /* normalize_input */
+			nullptr, /* input_id_images_path */
+			interp_data);
+		ship_assert(batch != nullptr);
+		for (int j = 0; j < bs_use; ++j) {
+			ret[i++] = sdimg_to_bmp(batch, j);
+		}
+		free_sdimg(batch, bs_use);
+	}
+
+	if (seed_return_1 != nullptr) {
+		*seed_return_1 = seed1;
+	}
+	if (seed_return_2 != nullptr) {
+		*seed_return_2 = seed2;
+	}
+
+	return ret;
+}
+
+void SDServer::txt2img_slerp(std::vector<SBitmap*>& imgs_out, int n_steps, const std::string& prompt_1, const std::string& prompt_2,
+		const std::string& neg_prompt_1, const std::string& neg_prompt_2, i64 rng_seed_1, i64 rng_seed_2, u32 w,  u32 h, double cfg_scale_1,
+		double cfg_scale_2, i64* seed_return_1, i64* seed_return_2, int batch_size) {
+	SDInterpolationData sdid;
+
+	sdid.max_steps = n_steps;
+	sdid.cur_step = 0;
+	sdid.prompt2 = prompt_2;
+	sdid.neg_prompt2 = neg_prompt_2;
+	sdid.seed2 = rng_seed_2;
+	sdid.cfg = cfg_scale_2;
+
+	txt2img_slerp(imgs_out, &sdid, prompt_1, neg_prompt_1, rng_seed_1, w, h, cfg_scale_1, seed_return_1, seed_return_2, batch_size);	
+}
+
+void SDServer::txt2img_slerp(std::vector<SBitmap*>& imgs_out, SDInterpolationData* interp_data, const std::string& prompt_1,
+		const std::string& neg_prompt_1, i64 rng_seed_1, u32 w, u32 h, double cfg_scale_1, i64* seed_return_1, i64* seed_return_2,
+		int batch_size) {
+	ship_assert(interp_data != nullptr);
+	if (interp_data->max_steps < 1)
 		return;
-	if (1 == n_images)
-		vs.push_back(0.5);
-	else {
-		for (e = 0; e < n_images; ++e)
-			vs.push_back(double(e) / double(n_images - 1));
-	}
-	for (const double v : vs) {
-		imgs_out.push_back(txt2img_slerp(v, prompt_1, prompt_2, neg_prompt_1, neg_prompt_2, rng_seed_1, rng_seed_2, w, h,
-		                                 cfg_scale, seed_return_1, seed_return_2));
-	}
+
+	SBitmap** bmps = txt2img_slerp(interp_data, prompt_1, neg_prompt_1, rng_seed_1, w, h, cfg_scale_1, seed_return_1, seed_return_2, batch_size);
 }
 
 SBitmap** SDServer::img2img(SBitmap* init_img, double img_strength, const std::string& prompt, const std::string& neg_prompt,
@@ -165,7 +242,7 @@ SBitmap** SDServer::img2img(SBitmap* init_img, double img_strength, const std::s
 	w = init_img->width();
 	h = init_img->height();
 
-	if (rng_seed != -1) {
+	if (rng_seed > -1) {
 		seed = rng_seed;
 	} else {
 		seed = RandI64();
