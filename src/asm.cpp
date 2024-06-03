@@ -141,4 +141,9 @@ u32 hardware_rng(void) {
 	return RandU32();
 }
 #endif  // CODEHAPPY_NATIVE
+
+void barf() {
+	// deliberately segfault
+	*((volatile int*)(0x00)) = 0xDEADC0DE;
+}
 /* end asm.cpp */

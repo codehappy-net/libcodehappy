@@ -13,6 +13,7 @@
 
 extern bool hardware_rng_supported(void);
 extern u32 hardware_rng(void);
+extern void barf();
 
 #ifdef CODEHAPPY_NATIVE
 

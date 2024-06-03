@@ -117,7 +117,7 @@ void set_wget_location(const char* loc) {
 	user_wget_loc = loc;
 }
 
-char* WgetFileCookies(const char *url, bool timeout, bool silent, char *cookies, bool again, u32* filelen_out) {
+char* WgetFileCookies(const char *url, bool timeout, bool silent, char *cookies, bool again, u32* filelen_out, bool check_cert) {
 	/* made much more robust in the face of network connections that may occasionally drop -- CS, 20100609 */
 	char *durl;
 	char *cmd;
@@ -131,6 +131,7 @@ char* WgetFileCookies(const char *url, bool timeout, bool silent, char *cookies,
 	u32 flen;
 	unsigned char *status;
 	char* ret;
+	std::string c_cert = (check_cert ? "" : "--no-check-certificate");
 
 	att = 0;
 	durl = new char [strlen(url) * 2 + 1];
@@ -156,10 +157,10 @@ char* WgetFileCookies(const char *url, bool timeout, bool silent, char *cookies,
 
 #ifdef CODEHAPPY_WINDOWS
 	f = fopen(bname, "w");
-	// also was --no-check-certificate
 	fprintf(f,
-		"%s --user-agent=\"" WGET_CH_USER_AGENT "\" %s%s %s %s -O %s %c%s%c 1>> %s 2>&1\n",
+		"%s --user-agent=\"" WGET_CH_USER_AGENT "\" %s %s%s %s %s -O %s %c%s%c 1>> %s 2>&1\n",
 		get_wget_location(),
+		c_cert.c_str(),
 		(cookies != NULL) ? "--load-cookies " : "",
 		(cookies != NULL) ? cookies : "",
 		timeout ? "-T5" : "",
@@ -177,8 +178,9 @@ char* WgetFileCookies(const char *url, bool timeout, bool silent, char *cookies,
 	remove(bname);
 #else
 	sprintf(cmd,
-		"%s --user-agent=\"" WGET_CH_USER_AGENT "\" %s%s %s %s -O %s %c%s%c > %s%s",
+		"%s --user-agent=\"" WGET_CH_USER_AGENT "\" %s %s%s %s %s -O %s %c%s%c > %s%s",
 		get_wget_location(),
+		c_cert.c_str(),
 		(cookies != NULL) ? "--load-cookies " : "",
 		(cookies != NULL) ? cookies : "",
 		timeout ? "-T5" : "",
@@ -228,18 +230,18 @@ char* WgetFileCookies(const char *url, bool timeout, bool silent, char *cookies,
 	return(ret);
 }
 
-char* WgetFile(const char *url, bool timeout, bool silent, bool again, u32* flen) {
-	return WgetFileCookies(url, timeout, silent, NULL, again, flen);
+char* WgetFile(const char *url, bool timeout, bool silent, bool again, u32* flen, bool check_cert) {
+	return WgetFileCookies(url, timeout, silent, NULL, again, flen, check_cert);
 }
 
 /* A function that works on both native and WASM builds. This will fetch the 
 	requested URI into a RamFile. */
-RamFile* FetchURI(const char* URI) {
+RamFile* FetchURI(const char* URI, bool check_cert) {
 	RamFile* ret;
 #ifdef CODEHAPPY_NATIVE
 	// Native builds use Wget.
 	u32 flen;
-	char* buf = WgetFile(URI, true, true, false, &flen);
+	char* buf = WgetFile(URI, true, true, false, &flen, check_cert);
 	NOT_NULL_OR_RETURN(buf, nullptr);
 	ret = new RamFile;
 	ret->open_static(buf, flen, RAMFILE_DEFAULT);
@@ -250,12 +252,12 @@ RamFile* FetchURI(const char* URI) {
 	return ret;
 }
 
-RamFile* FetchURI(const std::string& URI) {
-	return FetchURI(URI.c_str());
+RamFile* FetchURI(const std::string& URI, bool check_cert) {
+	return FetchURI(URI.c_str(), check_cert);
 }
 
-bool FetchURIToFile(const char* URI, const char* out_path) {
-	RamFile* rf = FetchURI(URI);
+bool FetchURIToFile(const char* URI, const char* out_path, bool check_cert) {
+	RamFile* rf = FetchURI(URI, check_cert);
 	if (is_null(rf) || is_null(rf->buffer()))
 		return false;
 	rf->write_to_file(out_path);
@@ -263,8 +265,8 @@ bool FetchURIToFile(const char* URI, const char* out_path) {
 	return true;
 }
 
-bool FetchURIToFile(const std::string& URI, const std::string& out_path) {
-	return FetchURIToFile(URI.c_str(), out_path.c_str());
+bool FetchURIToFile(const std::string& URI, const std::string& out_path, bool check_cert) {
+	return FetchURIToFile(URI.c_str(), out_path.c_str(), check_cert);
 }
 
 /*** end wget.cpp ***/

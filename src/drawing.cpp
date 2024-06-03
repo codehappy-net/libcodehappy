@@ -2700,8 +2700,12 @@ u32 SBitmap::save_bmp(const char* fname) {
 		return(1);
 
 	case BITMAP_DEFAULT:
-	case BITMAP_SUBBITMAP:
 	case BITMAP_DISPLAY_OWNED:
+		break;
+
+	case BITMAP_SUBBITMAP:
+		bmp_use = new SBitmap(w, h, BITMAP_DEFAULT);
+		this->blit(bmp_use);
 		break;
 
 	case BITMAP_GRAYSCALE:
