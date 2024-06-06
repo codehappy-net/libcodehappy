@@ -223,6 +223,10 @@ void SDServer::txt2img_slerp(std::vector<SBitmap*>& imgs_out, SDInterpolationDat
 		return;
 
 	SBitmap** bmps = txt2img_slerp(interp_data, prompt_1, neg_prompt_1, rng_seed_1, w, h, cfg_scale_1, seed_return_1, seed_return_2, batch_size);
+	for (int i = 0; i < interp_data->max_steps; ++i) {
+		imgs_out.push_back(bmps[i]);
+	}
+	delete bmps;
 }
 
 SBitmap** SDServer::img2img(SBitmap* init_img, double img_strength, const std::string& prompt, const std::string& neg_prompt,

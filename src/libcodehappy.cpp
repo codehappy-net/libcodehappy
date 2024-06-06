@@ -149,6 +149,11 @@ Display::Display(u32 width, u32 height, MainLoopCallback loop, void* user_data) 
 }
 
 bool Display::time_to_die = false;
+static bool _sdl_quit = false;
+
+void codehappy_close_window(void) {
+	__app_canvas->close_window();
+}
 
 Display::~Display() {
 	if (i_bitmap != nullptr)
@@ -177,6 +182,10 @@ RGBColor Display::get_pixel(int x, int y) const {
 	u32 *buf = (u32 *)surface->pixels;
 	int off = y * surface->w + x;
 	return buf[off];
+}
+
+void Display::close_window() {
+	time_to_die = true;
 }
 
 /* Status of keyboard scancodes. */
@@ -470,6 +479,7 @@ void Display::internal_main_loop() {
 		switch(event.type) {
 		case SDL_QUIT:
 			time_to_die = true;
+			_sdl_quit = true;
 			break;
 
 		case SDL_MOUSEMOTION:
@@ -565,6 +575,8 @@ void codehappy_main(MainLoopCallback main_loop_fn, void* user_data, u32 width, u
 		auto loop_start = std::chrono::high_resolution_clock::now();
 		__app_canvas->internal_main_loop();
 		if (Display::time_to_die) {
+			if (!_sdl_quit)
+				SDL_Quit();
 			break;
 		}
 		std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(

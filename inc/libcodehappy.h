@@ -565,6 +565,9 @@ public:
 	/* Set console mode on or off. */
 	void set_console_mode(bool console);
 
+	/* Close the window. */
+	void close_window();
+
 	/* Add a new control to the display. */
 	UICONTROL_HANDLE add_control(const UIButton& button);
 	UICONTROL_HANDLE add_control(const UICheckbox& chkbx);
@@ -669,6 +672,12 @@ extern void codehappy_main(MainLoopCallback main_loop_fn, void* user_data, u32 w
 	app main loop callback will no longer be called. Can be done if the app is "finished".
 ***/
 extern void codehappy_stop(void);
+
+/***
+	Call this to stop SDL events and close the main application window. Control will return
+	to the application's main function.
+***/
+extern void codehappy_close_window(void);
 
 /***
 	Call this to turn on or off console mode.
