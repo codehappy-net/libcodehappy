@@ -214,6 +214,12 @@ void main_loop(Display* display, void* user_data) {
 		ad.iprompt = ad.prompts.size();
 		invalidate_image(false);
 	}
+	if (kl.now_down('z') || kl.now_down('Z')) {
+		// accept the image, and stop the selection phase.
+		ad.interp_data.push_back(ad.cur_data);
+		ad.iprompt = ad.prompts.size();
+		invalidate_image(false);
+	}
 
 	kl.save(display);
 }
@@ -265,6 +271,7 @@ int app_main() {
 	std::cout << "[N] reject the image, try again on the same prompt\n";
 	std::cout << "[S] reject the image, and skip this prompt\n";
 	std::cout << "[X] stop the selection phase now; add no further candidate generations\n";
+	std::cout << "[Z] accept the current image and stop the selection phase now\n";
 
 	std::thread* th = new std::thread(generation_thread);
 

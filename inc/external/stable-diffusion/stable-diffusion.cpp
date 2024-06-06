@@ -1588,20 +1588,23 @@ static ggml_tensor* linear_interp_ggml_3d(ggml_tensor* i1, ggml_tensor* i2, floa
 	if (is_null(i2))
 		return i1;
 	int dim[3];
-	dim[0] = i1->ne[0];
-	dim[1] = i1->ne[1];
-	dim[2] = i1->ne[2];
+	dim[0] = std::max(i1->ne[0], i2->ne[0]);
+	dim[1] = std::max(i1->ne[1], i2->ne[1]);
+	dim[2] = std::max(i1->ne[2], i2->ne[2]);
 	ship_assert(i1->ne[3] <= 1);
 	ship_assert(i2->ne[3] <= 1);
-	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2]);
 
 	ggml_tensor* ret = ggml_new_tensor_3d(work_ctx, GGML_TYPE_F32, dim[0], dim[1], dim[2]);
 
 	for (int d3 = 0; d3 < dim[2]; ++d3) {
 		for (int d2 = 0; d2 < dim[1]; ++d2) {
 			for (int d1 = 0; d1 < dim[0]; ++d1) {
-				float f1 = ggml_tensor_get_f32(i1, d1, d2, d3);
-				float f2 = ggml_tensor_get_f32(i2, d1, d2, d3);
+				float f1 = 0.;
+				if (d1 < i1->ne[0] && d2 < i1->ne[1] && d3 < i1->ne[2])
+					f1 = ggml_tensor_get_f32(i1, d1, d2, d3);
+				float f2 = 0.;
+				if (d1 < i2->ne[0] && d2 < i2->ne[1] && d3 < i2->ne[2])
+					f2 = ggml_tensor_get_f32(i2, d1, d2, d3);
 				f1 = interp_float(f1, f2, param);
 				ggml_tensor_set_f32(ret, f1, d1, d2, d3);
 			}
@@ -1668,18 +1671,21 @@ static double ggml_dot_product_3d(ggml_tensor* t1, ggml_tensor* t2) {
 
 	ship_assert(t1 != nullptr && t2 != nullptr);
 
-	dim[0] = t1->ne[0];
-	dim[1] = t1->ne[1];
-	dim[2] = t1->ne[2];
+	dim[0] = std::max(t1->ne[0], t2->ne[0]);
+	dim[1] = std::max(t1->ne[1], t2->ne[1]);
+	dim[2] = std::max(t1->ne[2], t2->ne[2]);
 	ship_assert(t1->ne[3] <= 1);
 	ship_assert(t2->ne[3] <= 1);
-	ship_assert(dim[0] == t2->ne[0] && dim[1] == t2->ne[1] && dim[2] == t2->ne[2]);
 
 	for (int d3 = 0; d3 < dim[2]; ++d3) {
 		for (int d2 = 0; d2 < dim[1]; ++d2) {
 			for (int d1 = 0; d1 < dim[0]; ++d1) {
-				float f1 = ggml_tensor_get_f32(t1, d1, d2, d3);
-				float f2 = ggml_tensor_get_f32(t2, d1, d2, d3);
+				float f1 = 0.;
+				if (d1 < t1->ne[0] && d2 < t1->ne[1] && d3 < t1->ne[2])
+					f1 = ggml_tensor_get_f32(t1, d1, d2, d3);
+				float f2 = 0.;
+				if (d1 < t2->ne[0] && d2 < t2->ne[1] && d3 < t2->ne[2])
+					f2 = ggml_tensor_get_f32(t2, d1, d2, d3);
 				ret += (f1 * f2);
 			}
 		}
@@ -1741,18 +1747,21 @@ static double ggml_normproduct_3d(ggml_tensor* t1, ggml_tensor* t2) {
 
 	ship_assert(t1 != nullptr && t2 != nullptr);
 
-	dim[0] = t1->ne[0];
-	dim[1] = t1->ne[1];
-	dim[2] = t1->ne[2];
+	dim[0] = std::max(t1->ne[0], t2->ne[0]);
+	dim[1] = std::max(t1->ne[1], t2->ne[1]);
+	dim[2] = std::max(t1->ne[2], t2->ne[2]);
 	ship_assert(t1->ne[3] <= 1);
 	ship_assert(t2->ne[3] <= 1);
-	ship_assert(dim[0] == t2->ne[0] && dim[1] == t2->ne[1] && dim[2] == t2->ne[2]);
 
 	for (int d3 = 0; d3 < dim[2]; ++d3) {
 		for (int d2 = 0; d2 < dim[1]; ++d2) {
 			for (int d1 = 0; d1 < dim[0]; ++d1) {
-				float f1 = ggml_tensor_get_f32(t1, d1, d2, d3);
-				float f2 = ggml_tensor_get_f32(t2, d1, d2, d3);
+				float f1 = 0.;
+				if (d1 < t1->ne[0] && d2 < t1->ne[1] && d3 < t1->ne[2])
+					f1 = ggml_tensor_get_f32(t1, d1, d2, d3);
+				float f2 = 0.;
+				if (d1 < t2->ne[0] && d2 < t2->ne[1] && d3 < t2->ne[2])
+					f2 = ggml_tensor_get_f32(t2, d1, d2, d3);
 				mag1 += double(f1 * f1);
 				mag2 += double(f2 * f2);
 			}
@@ -1816,20 +1825,23 @@ static ggml_tensor* ggml_wsum_3d(ggml_tensor* i1, ggml_tensor* i2, double w1, do
 	if (is_null(i2))
 		return i1;
 	int dim[3];
-	dim[0] = i1->ne[0];
-	dim[1] = i1->ne[1];
-	dim[2] = i1->ne[2];
+	dim[0] = std::max(i1->ne[0], i2->ne[0]);
+	dim[1] = std::max(i1->ne[1], i2->ne[1]);
+	dim[2] = std::max(i1->ne[2], i2->ne[2]);
 	ship_assert(i1->ne[3] <= 1);
 	ship_assert(i2->ne[3] <= 1);
-	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2]);
 
 	ggml_tensor* ret = ggml_new_tensor_3d(work_ctx, GGML_TYPE_F32, dim[0], dim[1], dim[2]);
 
 	for (int d3 = 0; d3 < dim[2]; ++d3) {
 		for (int d2 = 0; d2 < dim[1]; ++d2) {
 			for (int d1 = 0; d1 < dim[0]; ++d1) {
-				float f1 = ggml_tensor_get_f32(i1, d1, d2, d3);
-				float f2 = ggml_tensor_get_f32(i2, d1, d2, d3);
+				float f1 = 0.;
+				if (d1 < i1->ne[0] && d2 < i1->ne[1] && d3 < i1->ne[2])
+					f1 = ggml_tensor_get_f32(i1, d1, d2, d3);
+				float f2 = 0.;
+				if (d1 < i2->ne[0] && d2 < i2->ne[1] && d3 < i2->ne[2])
+					f2 = ggml_tensor_get_f32(i2, d1, d2, d3);
 				f1 = (f1 * w1) + (f2 * w2);
 				ggml_tensor_set_f32(ret, f1, d1, d2, d3);
 			}
@@ -1904,13 +1916,8 @@ static ggml_tensor* slerp_ggml_3d(ggml_tensor* i1, ggml_tensor* i2, float param,
 		return i2;
 	if (is_null(i2))
 		return i1;
-	int dim[3];
-	dim[0] = i1->ne[0];
-	dim[1] = i1->ne[1];
-	dim[2] = i1->ne[2];
 	ship_assert(i1->ne[3] <= 1);
 	ship_assert(i2->ne[3] <= 1);
-	ship_assert(dim[0] == i2->ne[0] && dim[1] == i2->ne[1] && dim[2] == i2->ne[2]);
 
 	double cos_between = ggml_dot_product_3d(i1, i2) / ggml_normproduct_3d(i1, i2);
 	if (fabs(cos_between) > DOT_THRESHOLD) {
@@ -2345,6 +2352,10 @@ sd_image_t* txt2img(sd_ctx_t* sd_ctx,
     struct ggml_init_params params;
     params.mem_size = static_cast<size_t>(10 * 1024 * 1024);  // 10 MB
     if (sd_ctx->sd->stacked_id) {
+        params.mem_size += static_cast<size_t>(10 * 1024 * 1024);  // 10 MB
+    }
+    if (interp_data != nullptr) {
+    	// CMS: add some more memory for interpolation
         params.mem_size += static_cast<size_t>(10 * 1024 * 1024);  // 10 MB
     }
     params.mem_size += width * height * 3 * sizeof(float);

@@ -55,6 +55,8 @@ echo "*** Create the library archive"
 gcc-ar rcs bin/libcodehappycudasd.a *.o
 
 echo "*** Build tests and examples"
+g++ -g -c -Iinc $SDL_COMPILE_FLAGS $CUDA_INC_DIRS examples/interpolator.cpp -o interpolator.o
+g++ -g interpolator.o bin/libcodehappycudasd.a $CUDA_LIBRARIES $SDL_LINKER_FLAGS -o interpolator
 
 echo "*** Cleanup"
 rm *.o
