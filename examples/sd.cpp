@@ -17,6 +17,7 @@ int app_main() {
 	std::string model_path, prompt, neg_prompt, out_path = "output.png", vae_path;
 	const int MAX_SAMPLER = 7, MAX_SCHEDULER = 3;
 	int w = 512, h = 512, threads = -1, steps = 30, sampler = -1, scheduler = -1;
+	i64 seed = -1ll;
 	double cfg = 7.0;
 
 	ap.add_argument("w", type_int, "Width in pixels (default is 512)", &w);
@@ -31,6 +32,7 @@ int app_main() {
 	ap.add_argument("steps", type_int, "Number of denoising steps", &steps);
 	ap.add_argument("sampler", type_int, "sampler type (0-7)", &sampler);
 	ap.add_argument("scheduler", type_int, "scheduler type (0-3)", &scheduler);
+	ap.add_argument("seed", type_int64, "random seed to use (default is randomly chosen seed)", &seed);
 	ap.ensure_args(argc, argv);
 
 	ap.value_str("prompt", prompt);
@@ -78,7 +80,7 @@ int app_main() {
 		std::cout << "Scheduler: " << scheduler << "\n";
 	}
 
-	SBitmap** out = sd_server.txt2img(prompt, neg_prompt, w, h, cfg);
+	SBitmap** out = sd_server.txt2img(prompt, neg_prompt, w, h, cfg, seed);
 
 	std::cout << "The random seed used for this generation was " << sd_server.get_last_seed() << "\n";
 	std::cout << "Writing image to '" << out_path << "'...\n";

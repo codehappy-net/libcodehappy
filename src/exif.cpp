@@ -56,7 +56,7 @@ std::string ExifDictionary::exif_key_value(const std::string& key) const {
 	std::string empty;
 	if (!exif_key_present(key))
 		return empty;
-	return (dict.find(key))->first;
+	return (dict.find(key))->second;
 }
 
 void ExifDictionary::iterate_dict_start() {
