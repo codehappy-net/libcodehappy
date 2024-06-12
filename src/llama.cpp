@@ -500,6 +500,8 @@ std::string Llama::isn_rubric_opening() const {
 			return ret;
 		}
 		return "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n";
+	case ISN_MOONDREAM:
+		return "\n\nQuestion: ";
 	}
 	return "### Instruction: ";
 }
@@ -558,6 +560,8 @@ std::string Llama::isn_rubric_closing(bool trail_space) const {
 		return "<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>";
 	case ISN_LLAMA3CHAT:
 		return "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n";
+	case ISN_MOONDREAM:
+		return "\n\nAnswer:";
 	}
 	return "\n\n### Response:";
 }
@@ -659,6 +663,7 @@ static std::string __rubric_names[] = {
 	"alpaca", "alpaca-system", "mistral", "pygmalion", "codellama", "chatml", "vicuna", "monadgpt",
 	"tulu", "orca", "llama2chat", "human-assistant", "user-assistant", "deepseek-coder", "guanaco",
 	"zephyr", "phind", "orca-hashes", "xwincoder", "phi2", "command-r", "llama3chat", "vicuna-system",
+	"moondream",
 };
 
 std::string Llama::isn_rubric_name(InstructionType it) {
@@ -1606,10 +1611,22 @@ void Llama::generate_llava(std::vector<llama_token>& toks_out, int max_tokens, b
 		return;
 	}
 
-	// llava chat format is "<system_prompt>\nUSER:<image_embeddings>\n<textual_prompt>\nASSISTANT:"
-	llava_eval_string(ctx_llava->ctx_llama, "A chat between a curious human and an artificial intelligence assistant.  The assistant gives helpful, detailed, and polite answers to the human's questions.\nUSER:", params.n_batch, &n_past, insert_bos);
-	llava_eval_image_embed(ctx_llava->ctx_llama, img_embed, params.n_batch, &n_past);
-	llava_eval_string(ctx_llava->ctx_llama, (isn_mmodal + "\nASSISTANT:").c_str(), params.n_batch, &n_past, false);
+	if (ISN_MOONDREAM == isn_type) {
+		// moondream chat format is "<image>\n\nQuestion: <question>\n\nAnswer:"
+		std::string moondream_isn = "\n\nQuestion: ";
+		moondream_isn += isn_mmodal;
+		moondream_isn += "\n\nAnswer:";
+		if (insert_bos) {
+			llava_eval_string(ctx_llava->ctx_llama, "", params.n_batch, &n_past, insert_bos);
+		}
+		llava_eval_image_embed(ctx_llava->ctx_llama, img_embed, params.n_batch, &n_past);	
+		llava_eval_string(ctx_llava->ctx_llama, moondream_isn.c_str(), params.n_batch, &n_past, false);
+	} else {
+		// llava chat format is "<system_prompt>\nUSER:<image_embeddings>\n<textual_prompt>\nASSISTANT:"
+		llava_eval_string(ctx_llava->ctx_llama, "A chat between a curious human and an artificial intelligence assistant.  The assistant gives helpful, detailed, and polite answers to the human's questions.\nUSER:", params.n_batch, &n_past, insert_bos);
+		llava_eval_image_embed(ctx_llava->ctx_llama, img_embed, params.n_batch, &n_past);
+		llava_eval_string(ctx_llava->ctx_llama, (isn_mmodal + "\nASSISTANT:").c_str(), params.n_batch, &n_past, false);
+	}
 
 	for (int i = 0; i < max_tgt_len; i++) {
 		llama_token tok_out;
