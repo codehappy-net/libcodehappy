@@ -67,7 +67,8 @@
 #endif
 
 #if defined(CODEHAPPY_NATIVE) && defined(CODEHAPPY_WINDOWS)
-#define PDCURSES_OK
+/* TODO: add pdcurses build back for Win64 */
+//#define PDCURSES_OK
 #endif
 
 #if defined(__linux__) || defined(LINUX) || defined(linux) || defined(__UNIX__) || defined(UNIX)
