@@ -471,6 +471,9 @@ private:
 /*** reading EXIF data from image files. ***/
 #include "exif.h"
 
+/*** fast search & replace tree, fill it with terms to search and do S&R with them. much faster than repeated p_replace(). ***/
+#include "search-tree.h"
+
 /*** Application's main declaration. ***/
 #if defined(CODEHAPPY_NATIVE) && defined(CODEHAPPY_SDL) && defined(CODEHAPPY_WINDOWS)
 #define app_main()	WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevIns, LPSTR lpszArgument, int iShow)
