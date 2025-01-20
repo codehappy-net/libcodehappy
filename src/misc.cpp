@@ -640,17 +640,8 @@ void perfect_shuffle(void* data, uint nel, size_t elsize) {
 
 /*** Ask user to make a selection in [min_valid, max_valid]. Prompt until the user gives the expected response. ***/
 int menu_response(int min_valid, int max_valid, const char* prompt) {
-	int ret;
-	// TODO: cleanup scanf()
-	UNSAFE_FUNCTION("menu_response");
-	forever {
-		printf("%s", prompt);
-		scanf("%d", &ret);
-		if (is_between_int(ret, min_valid, max_valid))
-			break;
-		printf("Invalid response. Please give a value from %d to %d.\n", min_valid, max_valid);
-	}
-	return(ret);
+	std::string p = prompt;
+	return user_i32(prompt, min_valid, max_valid);
 }
 
 /*** Verify that the number of command-line arguments (besides program name/path) is at least min_arg. If not,
@@ -663,18 +654,7 @@ void check_number_args(int argc, int min_arg, const char* errmsg) {
 }
 /*** Yes or no response from user -- returns true iff yes ***/
 bool yes_or_no(const char* prompt) {
-	char res[256];
-	// TODO: cleanup scanf()
-	UNSAFE_FUNCTION("yes_or_no");
-	forever {
-		printf("%s",  prompt);
-		scanf("%8s", res);
-		if (tolower(res[0]) == 'y')
-			return(true);
-		if (tolower(res[0]) == 'n')
-			return(false);
-	}
-	return(false);
+	return yes_no(prompt);
 }
 
 /*** A hashing/fingerprinting function. Based on  IEEE POSIX P1003.2. ***/
