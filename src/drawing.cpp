@@ -2668,6 +2668,105 @@ SBitmap* SBitmap::load_raw(const char* szFile) {
 	return(bmpret);
 }
 
+static void __sbitmap_write_fn(void * context, void * data, int size) {
+	if (context != nullptr) {
+		u32 * cx = (u32 *)context;
+		(*cx) += (u32) size;
+	}
+}
+
+u32 SBitmap::output_size(const char* fname) {
+	char * ofilename = nullptr;
+	u32 fmt = FORMAT_UNK;
+	u32 ret = 0ul;
+	bool write = false;
+
+	if (is_null(fname))
+		fmt = FORMAT_PNG;
+	else if (has_extension(fname, "bmp"))
+		fmt = FORMAT_BMP;
+	else if (has_extension(fname, "png"))
+		fmt = FORMAT_PNG;
+	else if (has_extension(fname, "tga"))
+		fmt = FORMAT_TGA;
+	else if (has_extension(fname, "gif"))
+		fmt = FORMAT_GIF;
+	else if (has_extension(fname, "pcx"))
+		fmt = FORMAT_PCX;
+	else if (has_extension(fname, "jpg") || has_extension(fname, "jpeg"))
+		fmt = FORMAT_JPG;
+	else if (has_extension(fname, "rfi"))
+		fmt = FORMAT_RFI;
+	else
+		fmt = FORMAT_RAW;
+
+	switch (btype) {
+	case BITMAP_DEFAULT:
+	case BITMAP_DISPLAY_OWNED:
+		break;
+
+	default:
+		// these require translation, so force a disk write
+		write = true;
+		break;
+	}
+
+	switch (fmt) {
+	case FORMAT_BMP:
+		if (write)
+			ofilename = temp_file_name(".bmp");
+		else
+			stbi_write_bmp_to_func(__sbitmap_write_fn, &ret, this->w, this->h, 4, this->bits);
+		break;
+	case FORMAT_PNG:
+		if (write)
+			ofilename = temp_file_name(".png");
+		else
+			stbi_write_png_to_func(__sbitmap_write_fn, &ret, this->w, this->h, 4, this->bits, 4 * this->w);
+		break;
+	case FORMAT_TGA:
+		if (write)
+			ofilename = temp_file_name(".tga");
+		else
+			stbi_write_tga_to_func(__sbitmap_write_fn, &ret, this->w, this->h, 4, this->bits);
+		break;
+	case FORMAT_RAW:
+		ret = 4 + (this->w * this->h * 3);
+		break;
+	case FORMAT_JPG:
+		ofilename = temp_file_name(".jpg");
+		break;
+	case FORMAT_PCX:
+		ofilename = temp_file_name(".pcx");
+		break;
+	case FORMAT_RFI:
+		ofilename = temp_file_name(".rfi");
+		break;
+	case FORMAT_GIF:	
+		ofilename = temp_file_name(".gif");
+		break;
+	default:
+		ship_assert(false);
+	}
+
+	if (ofilename != nullptr) {
+		// have to write to disk for this format, either we don't have a write callback (TBI?) or it isn't 32bpp depth
+		this->save_bmp(ofilename);
+		ret = filelen(ofilename);
+		remove(ofilename);
+		delete ofilename;
+	}
+
+	return ret;
+}
+
+u32 SBitmap::output_size(const std::string& fname) {
+	if (fname.empty())
+		return output_size(nullptr);
+	return output_size(fname.c_str());
+}
+
+
 /* Save an image to any supported format. */
 u32 SBitmap::save_bmp(const char* fname) {
 	SBitmap* bmp_use;

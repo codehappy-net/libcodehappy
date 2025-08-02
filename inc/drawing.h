@@ -410,6 +410,11 @@ public:
 	u32 to_ramfile(const char* fname);
 	u32 to_ramfile(const std::string& fname);
 
+	/*** Give the compressed size of the image, without writing anything to disk. Format is determined from the output filename. ***/
+	/* NB: works w/o disk write for BMP, TGA, PNG, RAW. if the input filename is empty/nullptr, PNG format is assumed */
+	u32 output_size(const char* fname);
+	u32 output_size(const std::string& fname);
+
 	/*** Address of a pixel. ***/
 	u8* pixel_loc(u32 x, u32 y) const;
 	u8* pixel_loc(const SPoint& p) const;
