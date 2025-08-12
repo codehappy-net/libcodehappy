@@ -896,6 +896,32 @@ const char* next_of_three(const char* w, char c1, char c2, char c3) {
 	return nullptr;
 }
 
+const char* next_of_two(const char * w, const char * s1, const char * s2) {
+	const char * r1, * r2;
+	NOT_NULL_OR_RETURN(w, nullptr);
+	r1 = strstr(w, s1);
+	r2 = strstr(w, s2);
+	NOT_NULL_OR_RETURN(r1, r2);
+	NOT_NULL_OR_RETURN(r2, r1);
+	if (r1 < r2)
+		return r1;
+	return r2;
+}
+
+const char* next_of_three(const char * w, const char * s1, const char * s2, const char * s3) {
+	const char * r1, * r2, * r3, * ret = nullptr;
+	NOT_NULL_OR_RETURN(w, nullptr);
+	r1 = strstr(w, s1);
+	r2 = strstr(w, s2);
+	r3 = strstr(w, s3);
+	ret = r1;
+	if (is_null(ret) || (r2 < ret))
+		ret = r2;
+	if (is_null(ret) || (r3 < ret))
+		ret = r3;
+	return ret;
+}
+
 bool starts_with(const char* str, const char* pfx) {
 	return (strncmp((str), (pfx), strlen(pfx)) == 0);
 }

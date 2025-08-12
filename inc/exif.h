@@ -46,6 +46,8 @@ extern char* zstrsearch(const char* haystack, const char* needle, const char* ha
 /* same as above, except this ignores NUL terminators in the needle as well. 'needle_end' should point to the byte just after
 	the last byte in the needle that you care about (just like haystack_end,) i.e. (needle_end - needle) gives needle length in bytes. */
 extern char* zstrsearch(const char* haystack, const char* needle, const char* haystack_end, const char* needle_end);
+/* as zstrsearch(), but return the first of two needles to appear. */
+extern char* zstrsearch2(const char* haystack, const char* needle1, const char * needle2, const char* haystack_end);
 
 #endif  // __EXIF_H
 /* end exif.h */

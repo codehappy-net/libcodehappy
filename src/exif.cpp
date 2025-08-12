@@ -11,7 +11,7 @@
 /* Search haystack for needle, ignoring NUL terminators in haystack, up to haystack_end. Good for searching in binary files, etc. */
 char* zstrsearch(const char* haystack, const char* needle, const char* haystack_end) {
 	ship_assert(haystack != nullptr && needle != nullptr && haystack_end > haystack);
-	size_t needle_len = strlen(needle);	// we respect NUL terminators in the needle in this version, to save a needle_end/size parameter.
+	const size_t needle_len = strlen(needle);	// we respect NUL terminators in the needle in this version, to save a needle_end/size parameter.
 	haystack_end -= needle_len;
 	haystack_end++;
 	
@@ -26,7 +26,7 @@ char* zstrsearch(const char* haystack, const char* needle, const char* haystack_
 /* same as above, except this ignores NUL terminators in the needle as well. */
 char* zstrsearch(const char* haystack, const char* needle, const char* haystack_end, const char* needle_end) {
 	ship_assert(haystack != nullptr && needle != nullptr && haystack_end > haystack && needle_end > needle);
-	size_t needle_len = needle_end - needle;
+	const size_t needle_len = needle_end - needle;
 	haystack_end -= needle_len;
 	haystack_end++;
 	
@@ -35,6 +35,21 @@ char* zstrsearch(const char* haystack, const char* needle, const char* haystack_
 			return (char *) haystack;
 		++haystack;
 	}
+	return nullptr;
+}
+
+char* zstrsearch2(const char* haystack, const char* needle1, const char * needle2, const char* haystack_end) {
+	ship_assert(haystack != nullptr && needle1 != nullptr && needle2 != nullptr && haystack_end > haystack);
+	const size_t needle_len1 = strlen(needle1), needle_len2 = strlen(needle2);
+
+	while (haystack < haystack_end) {
+		if ((haystack + needle_len1 <= haystack_end) && !memcmp(haystack, needle1, needle_len1))
+			return (char *) haystack;
+		if ((haystack + needle_len2 <= haystack_end) && !memcmp(haystack, needle2, needle_len2))
+			return (char *) haystack;
+		++haystack;
+	}
+
 	return nullptr;
 }
 
@@ -101,8 +116,11 @@ bool ExifDictionary::read_exif_from_image_file(const std::string& pathname) {
 		u32 nb;
 		unsigned char* uw;
 		std::string key, val;
-		w = zstrsearch(w, "tEXt", we);
+		bool is_itxt;
+		/* must support iTXt blocks to support non-ASCII UTF-8 characters (compressed zTXt blocks aren't supported here) */
+		w = zstrsearch2(w, "tEXt", "iTXt", we);
 		NOT_NULL_OR_BREAK(w);
+		is_itxt = (strncmp(w, "iTXt", 4) == 0);
 		uw = (unsigned char *)w;
 		nb = u32(*(uw - 1)) + (u32(*(uw - 2)) << 8) + (u32(*(uw - 3)) << 16) + (u32(*(uw - 4)) << 24);
 		w += 4;
@@ -114,6 +132,8 @@ bool ExifDictionary::read_exif_from_image_file(const std::string& pathname) {
 		key = w;
 		w += strlen(w);
 		++w;
+		if (is_itxt)
+			w += 4;
 		val = w;
 		// insert the new entry and continue.
 		dict[key] = val;

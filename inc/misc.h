@@ -124,6 +124,10 @@ extern void p_replace(std::string& p, const std::string& rw, const std::string& 
 extern const char* next_of_two(const char* w, char c1, char c2);
 extern const char* next_of_three(const char* w, char c1, char c2, char c3);
 
+/* Find the next of two (or three) strings, starting from "w". */
+extern const char* next_of_two(const char * w, const char * s1, const char * s2);
+extern const char* next_of_three(const char * w, const char * s1, const char * s2, const char * s3);
+
 /*** starts_with() moved to a function, due to a conflict with leejet's Stable Diffusion library. ***/
 extern bool starts_with(const char* str, const char* pfx);
 
